@@ -3,9 +3,8 @@ package org.corespring.herokuHelper
 import grizzled.cmd._
 import handlers._
 import log.{logger, Debug}
-import models.GlobalConfig
+import models.{ConfigLoader, GlobalConfig, netrc}
 import java.io.File
-import models.netrc
 
 
 object CLI extends App {
@@ -17,16 +16,26 @@ object CLI extends App {
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
       "0123456789.-"
 
+    override def primaryPrompt = "-> "
+    override def secondaryPrompt = "--> "
+
+    val configLoader : ConfigLoader = new ConfigLoader( LocalConfigFile )
+
     val handlers: List[CommandHandler] = List(
       new AboutHandler,
       new ExitHandler,
       new ViewReposHandler,
+      new ViewRepoHandler(configLoader),
       new PushHandler,
-      new RollbackHandler)
+      new RollbackHandler,
+      new FolderInfoHandler)
+
   }
 
   import grizzled.file.util.joinPath
   import grizzled.string.util.tokenizeWithQuotes
+
+  val LocalConfigFile = ".heroku-helper-config.json"
 
   val Header = {
     val raw = """
@@ -48,6 +57,7 @@ object CLI extends App {
     logger.debug("using apiKey: " + apiKey + " from: " + netrc.DefaultPath)
     logger.info("available commands: " + cmd.handlers.map(_.CommandName).mkString(", "))
     logger.info("run `help command` for more info")
+    cmd.handleCommand(Some("folder-info"))
     cmd.mainLoop
   }
 

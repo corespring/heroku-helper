@@ -8,6 +8,9 @@ case class GlobalConfig(herokuApiKey: Option[String] = None)
 
 
 object GlobalConfig {
+
+  /** Load the config from the given file path
+    */
   def fromFile(jsonPath: String): GlobalConfig = {
 
     val configFile: File = new File(jsonPath)
@@ -17,7 +20,6 @@ object GlobalConfig {
       com.codahale.jerkson.Json.parse[GlobalConfig](jsonString)
     }
     else {
-      logger.info("doesn't exist")
       val newConfig = new GlobalConfig
       toFile(jsonPath, newConfig)
       newConfig
@@ -31,15 +33,11 @@ object GlobalConfig {
       file.createNewFile()
     }
 
-    def writeToFile(path: String, s: String): File = {
-      val fw = new FileWriter(path)
-      fw.write(s)
-      fw.close()
-      new File(path)
-    }
-
     val json = com.codahale.jerkson.Json.generate(config)
-    writeToFile(path, json)
+
+    import org.corespring.file.utils._
+
+    write(path, json)
   }
 }
 
