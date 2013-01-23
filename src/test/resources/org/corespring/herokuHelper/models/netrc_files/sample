@@ -1,0 +1,6 @@
+machine api.heroku.com
+  login ed.eustace@gmail.com
+  password pword
+machine code.heroku.com
+  login ed.eustace@gmail.com
+  password pword
