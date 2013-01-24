@@ -5,6 +5,7 @@ import handlers._
 import log.{logger, Debug}
 import models.{ConfigLoader, GlobalConfig, netrc}
 import java.io.File
+import shell.Git
 
 
 object CLI extends App {
@@ -25,8 +26,9 @@ object CLI extends App {
       new AboutHandler,
       new ExitHandler,
       new ViewReposHandler,
-      new ViewRepoHandler(configLoader),
-      new PushHandler,
+      new ViewRepoHandler(apiKey,configLoader),
+      new ViewReleasesHandler(apiKey,configLoader),
+      new PushHandler(Git),
       new RollbackHandler,
       new FolderInfoHandler)
 

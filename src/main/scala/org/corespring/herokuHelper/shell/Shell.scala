@@ -2,7 +2,12 @@ package org.corespring.herokuHelper.shell
 
 import sys.process.ProcessLogger
 
-object Shell {
+trait Shell {
+  /** Execute a command and return the response */
+  def run(cmd:String) : String
+}
+
+object Shell extends Shell {
 
   /** Run a shell command and return the output
     */

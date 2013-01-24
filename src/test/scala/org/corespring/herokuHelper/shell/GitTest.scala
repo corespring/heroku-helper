@@ -1,28 +1,44 @@
 package org.corespring.herokuHelper.shell
 
+import git.GitInfo
 import org.specs2.mutable.Specification
 
 class GitTest extends Specification {
 
   "Git" should {
+
+    class MockShell(response: String) extends Shell {
+      def run(cmd: String) = response
+    }
+
     "parse remote" in {
 
-      val sample = """heroku git@heroku.com:heroku-helper-example-app.git (fetch)
-                     |heroku git@heroku.com:heroku-helper-example-app.git (push)
-                     |origin git@github.com:corespring/heroku-helper-example-app.git (fetch)
-                     |origin git@github.com:corespring/heroku-helper-example-app.git (push)""".stripMargin
-      Git.parseGitRemote(sample) === List(("heroku", "heroku-helper-example-app"))
-
-      val sampleTwo = """heroku git@heroku.com:heroku-helper-example-app.git (fetch)
-                        |other-app git@heroku.com:my-other-app.git (fetch)
+      val oneRemote = """heroku git@heroku.com:heroku-helper-example-app.git (fetch)
                         |heroku git@heroku.com:heroku-helper-example-app.git (push)
                         |origin git@github.com:corespring/heroku-helper-example-app.git (fetch)
                         |origin git@github.com:corespring/heroku-helper-example-app.git (push)""".stripMargin
 
-      Git.parseGitRemote(sampleTwo) === List(
+      new Git(new MockShell(oneRemote)).repos === List(("heroku", "heroku-helper-example-app"))
+
+      val twoRemotes = """heroku git@heroku.com:heroku-helper-example-app.git (fetch)
+                         |other-app git@heroku.com:my-other-app.git (fetch)
+                         |heroku git@heroku.com:heroku-helper-example-app.git (push)
+                         |origin git@github.com:corespring/heroku-helper-example-app.git (fetch)
+                         |origin git@github.com:corespring/heroku-helper-example-app.git (push)""".stripMargin
+
+      new Git(new MockShell(twoRemotes)).repos === List(
         ("heroku", "heroku-helper-example-app"),
         ("other-app", "my-other-app")
       )
+    }
+
+    "parse branch" in {
+
+      val master = """* master
+                     |  new_b""".stripMargin
+
+      new Git(new MockShell(master)).branches === List("master", "new_b")
+
     }
   }
 
