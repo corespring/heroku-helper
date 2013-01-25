@@ -15,8 +15,7 @@ libraryDependencies ++= Seq(
   "org.clapper" %% "grizzled-scala" % "1.0.13",
   "com.codahale" % "jerkson_2.9.1" % "0.5.0",
   "org.specs2" %% "specs2" % "1.12.2" % "test",
-  "org.corespring" %% "heroku-rest-client" % "0.1-SNAPSHOT"
-  )
+  "org.scalaj" %% "scalaj-http" % "0.3.6" )
 
 resolvers ++= Seq(
   "Sbt plugins" at "http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases/",
