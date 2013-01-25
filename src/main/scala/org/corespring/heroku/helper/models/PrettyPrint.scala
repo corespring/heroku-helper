@@ -6,14 +6,11 @@ object PrettyPrint {
   def release(r: Release): String = {
 
     val template =
-      """
-        |Name: ${name}
-        |Commit: ${commit}
-        |Created: ${created}
+      """|-------------------------------------
+        |Release Name: ${name} / Commit: ${commit} / Created: ${created}
         |User: ${user}
-        |Env Vars: ${envVars}
-        |
-      """.stripMargin
+        |Env Vars: ${envVars}""".stripMargin
+
 
     org.corespring.heroku.helper.string.utils.interpolate(template,
       ("name", r.name),
@@ -52,7 +49,7 @@ object PrettyPrint {
 
   }
 
-  private def tidy(s:String) : String = s
+  private def tidy(s: String): String = s
     .replaceAll("\\$", "\\\\\\$")
     .replaceAll("\\{", "\\\\\\{")
     .replaceAll("\\}", "\\\\\\}")

@@ -2,15 +2,13 @@ package org.corespring.heroku.helper
 
 import grizzled.cmd.{Stop, KeepGoing, CommandAction, CommandHandler}
 import org.corespring.heroku.helper.models._
-import org.corespring.heroku.helper.shell.git.GitInfo
 import org.corespring.heroku.helper.shell.{Git, Shell}
 import org.corespring.heroku.helper.log.logger
-import org.corespring.heroku.rest.client.HerokuRestClient
 import grizzled.readline._
-import scala.Left
 import scala.Some
-import scala.Right
 import grizzled.readline.LineToken
+import annotation.tailrec
+import collection.immutable.ListSet
 
 package object handlers {
 
@@ -25,6 +23,60 @@ package object handlers {
     body()
     logger.info(HRule)
     KeepGoing
+  }
+
+
+
+  abstract class BaseHandler extends CommandHandler {
+
+    /** A completion helper that digs through the tokens calling the appropriate contextual function
+      *
+      * @param token
+      * @param allTokens
+      * @param line
+      * @param contextualFns - a function that takes the context command (the preceding word) and returns a List[String]
+      * @return
+      */
+    def completeContextually(token: String,
+                             allTokens: List[CompletionToken],
+                             line: String,
+                             contextualFns: (String => List[String])*): List[String] = {
+
+      def headOrNil(l:List[(String => List[String])], context:String) = l match {
+        case Nil => Nil
+        case _ => l.head(context)
+      }
+
+      @tailrec
+      def completeRecursively(context: String, tokens: List[CompletionToken], options: List[(String => List[String])]): List[String] = {
+        tokens match {
+          case Cursor :: Nil => headOrNil(options,context)
+          case LineToken(s) :: Nil => headOrNil(options,context).filter(_.startsWith(s))
+          case LineToken(s) :: Cursor :: Nil => headOrNil(options,context).filter(_.startsWith(s))
+          case LineToken(s) :: Delim :: rest => completeRecursively(s, rest, options.tail)
+          case List() => List()
+          case _ => List()
+        }
+      }
+
+      allTokens match {
+        case LineToken(CommandName) :: Delim :: rest => completeRecursively(CommandName, rest, contextualFns.toList)
+        case _ => List()
+      }
+
+    }
+
+    /** A convenience method when you want to complete base on a known list set that
+      * doesn't depend on context.
+      */
+    def completeFromOptions(token: String,
+                            allTokens: List[CompletionToken],
+                            line: String,
+                            options: List[String]*): List[String] = {
+
+      val asContextFunctions = options.map( o => ((s:String) => o) )
+      completeContextually(token,allTokens,line, asContextFunctions: _*)
+    }
   }
 
 
@@ -65,13 +117,12 @@ package object handlers {
     }
   }
 
-  class ViewReleasesHandler(appsService: AppsService) extends CommandHandler {
+  class ViewReleasesHandler(appsService: AppsService) extends BaseHandler {
     val CommandName = "releases"
     val Help = "View all releases for a repo"
 
-
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
-      appsService.apps.map(_.name)
+      completeFromOptions(token,allTokens,line,appsService.apps.map(_.name))
     }
 
     def runCommand(command: String, args: String): CommandAction = wrap {
@@ -87,7 +138,7 @@ package object handlers {
     }
   }
 
-  class ViewRepoHandler(appsService: AppsService) extends CommandHandler {
+  class ViewRepoHandler(appsService: AppsService) extends BaseHandler{
     val CommandName = "repo"
     val Help = "View more information about a heroku repo"
 
@@ -95,15 +146,7 @@ package object handlers {
     val appNames = apps.map(_.name)
 
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
-
-      allTokens match {
-        case LineToken(CommandName) :: rest => rest match {
-          case Delim :: Cursor :: Nil => appNames
-          case Delim :: LineToken(str) :: Cursor :: Nil => appNames.filter(_.startsWith(str))
-          case _ => List()
-        }
-        case _ => List()
-      }
+      completeFromOptions(token,allTokens,line,appNames)
     }
 
     def runCommand(command: String, args: String): CommandAction = wrap {
@@ -127,26 +170,17 @@ package object handlers {
   }
 
 
-  class PushHandler(appsService: AppsService, shell: Shell) extends CommandHandler {
+
+  class PushHandler(appsService: AppsService, shell: Shell) extends BaseHandler {
     val CommandName = "push"
     val Help = "push this git repository to a heroku remote repository"
 
     /** Push can assist with the 2 params - 1st is the heroku repo, 2nd is the branch
       */
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
-
       val gitRemotes = appsService.apps.map(_.gitRemote)
       val branches = appsService.branches
-      allTokens match {
-        case LineToken(CommandName) :: rest => rest match {
-          case Delim :: Cursor :: Nil => gitRemotes
-          case Delim :: LineToken(str) :: Cursor :: Nil => gitRemotes.filter(_.startsWith(str))
-          case Delim :: LineToken(repo) :: Delim :: Cursor :: Nil => branches
-          case Delim :: LineToken(repo) :: Delim :: LineToken(br) :: Cursor :: Nil => branches.filter(_.startsWith(br))
-          case _ => List()
-        }
-        case _ => List()
-      }
+      completeFromOptions(token, allTokens, line, gitRemotes, branches)
     }
 
     def runCommand(command: String, args: String): CommandAction = wrap {
@@ -179,7 +213,7 @@ package object handlers {
   }
 
 
-  class RollbackHandler(appsService: AppsService, shell: Shell) extends CommandHandler {
+  class RollbackHandler(appsService: AppsService, shell: Shell) extends BaseHandler {
     val CommandName = "rollback"
     val Help = "rollback a heroku repo to an earlier version"
     val ErrorMsg = "you need to specify the heroku app name and the version"
@@ -195,7 +229,7 @@ package object handlers {
               appsService.loadConfigFor(app) match {
                 case Some(config) => {
                   config.rollback.before.foreach(script => logger.info(shell.run(script)))
-                  val finalCmd = config.rollback.prepareCommand(version,appName)
+                  val finalCmd = config.rollback.prepareCommand(version, appName)
                   logger.debug("running push: " + finalCmd)
                   logger.info(shell.run(finalCmd))
                   config.push.after.foreach(script => logger.info(shell.run(script)))
@@ -211,33 +245,16 @@ package object handlers {
       KeepGoing
     }
 
-    /** Push can assist with the 2 params - 1st is the heroku repo, 2nd is the branch
-      */
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
 
       val appNames = appsService.apps.map(_.name)
 
-      allTokens match {
-        case LineToken(CommandName) :: rest => rest match {
-          case Delim :: Cursor :: Nil => appNames
-          case Delim :: LineToken(str) :: Cursor :: Nil => appNames.filter(_.startsWith(str))
-          case Delim :: LineToken(appName) :: Delim :: Cursor :: Nil => {
-            appsService.apps.find(_.name == appName) match {
-              case Some(app) => appsService.releases(app).map(_.name)
-              case None => List()
-            }
-          }
-          case Delim :: LineToken(appName) :: Delim :: LineToken(version) :: Cursor :: Nil => {
-            appsService.apps.find(_.name == appName) match {
-              case Some(app) => appsService.releases(app).map(_.name).filter(_.startsWith(version))
-              case None => List()
-            }
-
-          }
-          case _ => List()
-        }
-        case _ => List()
+      def releaseNames(appName: String): List[String] = appsService.apps.find(_.name == appName) match {
+        case Some(app) => appsService.releases(app).map(_.name)
+        case None => List()
       }
+
+      completeContextually( token, allTokens, line, (command: String) => appNames, releaseNames)
     }
   }
 
