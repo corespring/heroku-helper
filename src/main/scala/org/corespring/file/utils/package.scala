@@ -11,4 +11,9 @@ package object utils {
     new File(path)
   }
 
+  def delete(path: String) {
+    val f = new File(path)
+    if (f.exists) f.delete()
+  }
+
 }

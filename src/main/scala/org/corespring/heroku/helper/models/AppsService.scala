@@ -24,6 +24,12 @@ trait AppsService {
   /** @return - a list of branches for this git repo
     */
   def branches: List[String]
+
+  def loadHerokuConfigFor(app:HerokuApp) : Map[String,String]
+
+  /** The local git repos short commit hash*/
+  def shortCommitHash : String
+
 }
 
 class AppsServiceImpl(apiKey: String, git: GitInfo, configLoader: ConfigLoader) extends AppsService {
@@ -67,4 +73,13 @@ class AppsServiceImpl(apiKey: String, git: GitInfo, configLoader: ConfigLoader) 
   def loadConfigFor(app: HerokuApp): Option[HerokuAppConfig] = configLoader.config.appConfigByName(app.name)
 
   def branches : List[String] = git.branches
+
+  def loadHerokuConfigFor(app:HerokuApp) : Map[String,String] = {
+    HerokuRestClient.Config.config(apiKey,app.name) match {
+      case Right(map) => map
+      case Left(error) => Map()
+    }
+  }
+
+  def shortCommitHash : String = git.shortCommitHash
 }

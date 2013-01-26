@@ -7,4 +7,7 @@ trait GitInfo {
 
   /** List the local branches */
   def branches : List[String]
+
+  /** The local git repos short commit hash*/
+  def shortCommitHash : String
 }

@@ -2,13 +2,14 @@ package org.corespring.heroku.helper
 
 import grizzled.cmd.{Stop, KeepGoing, CommandAction, CommandHandler}
 import org.corespring.heroku.helper.models._
-import org.corespring.heroku.helper.shell.{Git, Shell}
+import shell.{CmdResult, Git, Shell}
 import org.corespring.heroku.helper.log.logger
 import grizzled.readline._
 import scala.Some
 import grizzled.readline.LineToken
 import annotation.tailrec
 import collection.immutable.ListSet
+import com.codahale.jerkson.Json
 
 package object handlers {
 
@@ -25,9 +26,34 @@ package object handlers {
     KeepGoing
   }
 
+  trait ShellRunning {
 
+    /** The shell to use */
+    def shell: Shell
+
+    /** Run a shell script
+      * @throws a RuntimeException if the exitCode is not 0
+      * @return
+      */
+    def runScript(script: String, params: String = ""): String = {
+      val result: CmdResult = if (params.isEmpty) {
+        shell.run(script)
+      }
+      else {
+        shell.run(script + " " + params)
+      }
+
+      logger.debug(result.name + " code: " + result.exitCode)
+
+      if (result.exitCode != 0) {
+        throw new RuntimeException("Error running cmd: " + result.name)
+      }
+      result.out
+    }
+  }
 
   abstract class BaseHandler extends CommandHandler {
+
 
     /** A completion helper that digs through the tokens calling the appropriate contextual function
       *
@@ -42,7 +68,7 @@ package object handlers {
                              line: String,
                              contextualFns: (String => List[String])*): List[String] = {
 
-      def headOrNil(l:List[(String => List[String])], context:String) = l match {
+      def headOrNil(l: List[(String => List[String])], context: String) = l match {
         case Nil => Nil
         case _ => l.head(context)
       }
@@ -50,9 +76,9 @@ package object handlers {
       @tailrec
       def completeRecursively(context: String, tokens: List[CompletionToken], options: List[(String => List[String])]): List[String] = {
         tokens match {
-          case Cursor :: Nil => headOrNil(options,context)
-          case LineToken(s) :: Nil => headOrNil(options,context).filter(_.startsWith(s))
-          case LineToken(s) :: Cursor :: Nil => headOrNil(options,context).filter(_.startsWith(s))
+          case Cursor :: Nil => headOrNil(options, context)
+          case LineToken(s) :: Nil => headOrNil(options, context).filter(_.startsWith(s))
+          case LineToken(s) :: Cursor :: Nil => headOrNil(options, context).filter(_.startsWith(s))
           case LineToken(s) :: Delim :: rest => completeRecursively(s, rest, options.tail)
           case List() => List()
           case _ => List()
@@ -74,8 +100,8 @@ package object handlers {
                             line: String,
                             options: List[String]*): List[String] = {
 
-      val asContextFunctions = options.map( o => ((s:String) => o) )
-      completeContextually(token,allTokens,line, asContextFunctions: _*)
+      val asContextFunctions = options.map(o => ((s: String) => o))
+      completeContextually(token, allTokens, line, asContextFunctions: _*)
     }
   }
 
@@ -122,7 +148,7 @@ package object handlers {
     val Help = "View all releases for a repo"
 
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
-      completeFromOptions(token,allTokens,line,appsService.apps.map(_.name))
+      completeFromOptions(token, allTokens, line, appsService.apps.map(_.name))
     }
 
     def runCommand(command: String, args: String): CommandAction = wrap {
@@ -138,7 +164,7 @@ package object handlers {
     }
   }
 
-  class ViewRepoHandler(appsService: AppsService) extends BaseHandler{
+  class ViewRepoHandler(appsService: AppsService) extends BaseHandler {
     val CommandName = "repo"
     val Help = "View more information about a heroku repo"
 
@@ -146,7 +172,7 @@ package object handlers {
     val appNames = apps.map(_.name)
 
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
-      completeFromOptions(token,allTokens,line,appNames)
+      completeFromOptions(token, allTokens, line, appNames)
     }
 
     def runCommand(command: String, args: String): CommandAction = wrap {
@@ -170,10 +196,11 @@ package object handlers {
   }
 
 
-
-  class PushHandler(appsService: AppsService, shell: Shell) extends BaseHandler {
+  class PushHandler(appsService: AppsService, shell: Shell) extends BaseHandler with ShellRunning {
     val CommandName = "push"
     val Help = "push this git repository to a heroku remote repository"
+
+    def shell() = shell
 
     /** Push can assist with the 2 params - 1st is the heroku repo, 2nd is the branch
       */
@@ -182,6 +209,20 @@ package object handlers {
       val branches = appsService.branches
       completeFromOptions(token, allTokens, line, gitRemotes, branches)
     }
+
+
+    def configFilename(app: HerokuApp): String = ".heroku-helper-tmp-" + app.name + ".json"
+
+    def writeHerokuConfigToFile(app: HerokuApp): String = {
+      val herokuConfig = appsService.loadHerokuConfigFor(app)
+      logger.debug("herokuConfig:")
+      logger.debug(herokuConfig.toString)
+
+      val tmpDataFile = configFilename(app)
+      org.corespring.file.utils.write(tmpDataFile, Json.generate(herokuConfig))
+      tmpDataFile
+    }
+
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
@@ -193,15 +234,23 @@ package object handlers {
 
             appsService.apps.find(_.gitRemote == gitRemote) match {
               case Some(app) => {
-                appsService.loadConfigFor(app) match {
-                  case Some(config) => {
-                    config.push.before.foreach(script => logger.info(shell.run(script)))
-                    val finalCmd = config.push.prepareCommand(gitRemote, branch)
-                    logger.info("running push: " + finalCmd)
-                    logger.info(shell.run(finalCmd))
-                    config.push.after.foreach(script => logger.info(shell.run(script)))
+
+                if (appsService.currentRelease(app) == appsService.shortCommitHash) {
+                  logger.info(app.name + " is already up to date - not pushing")
+                } else {
+                  appsService.loadConfigFor(app) match {
+                    case Some(config) => {
+                      val tmpFile = writeHerokuConfigToFile(app)
+                      config.push.before.foreach(script => logger.info(runScript(script, tmpFile)))
+                      val finalCmd = config.push.prepareCommand(gitRemote, branch)
+                      logger.info("running push: " + finalCmd)
+                      logger.info(runScript(finalCmd))
+                      config.push.after.foreach(script => logger.info(runScript(script, tmpFile)))
+                      //org.corespring.file.utils.delete(tmpFile)
+                    }
+                    case _ => logger.info("can't find a config - add one")
                   }
-                  case _ => logger.info("can't find a config - add one")
+
                 }
               }
               case None => logger.info("can't find app for this remote:" + gitRemote)
@@ -213,10 +262,12 @@ package object handlers {
   }
 
 
-  class RollbackHandler(appsService: AppsService, shell: Shell) extends BaseHandler {
+  class RollbackHandler(appsService: AppsService, shell: Shell) extends BaseHandler with ShellRunning {
     val CommandName = "rollback"
     val Help = "rollback a heroku repo to an earlier version"
     val ErrorMsg = "you need to specify the heroku app name and the version"
+
+    def shell() = shell
 
     def runCommand(command: String, args: String): CommandAction = {
 
@@ -228,11 +279,11 @@ package object handlers {
             case Some(app) => {
               appsService.loadConfigFor(app) match {
                 case Some(config) => {
-                  config.rollback.before.foreach(script => logger.info(shell.run(script)))
+                  config.rollback.before.foreach(script => logger.info(runScript(script)))
                   val finalCmd = config.rollback.prepareCommand(version, appName)
                   logger.debug("running push: " + finalCmd)
-                  logger.info(shell.run(finalCmd))
-                  config.push.after.foreach(script => logger.info(shell.run(script)))
+                  logger.info(runScript(finalCmd))
+                  config.push.after.foreach(script => logger.info(runScript(script)))
                 }
                 case _ => logger.info("no config available - add one!")
               }
@@ -254,7 +305,7 @@ package object handlers {
         case None => List()
       }
 
-      completeContextually( token, allTokens, line, (command: String) => appNames, releaseNames)
+      completeContextually(token, allTokens, line, (command: String) => appNames, releaseNames)
     }
   }
 

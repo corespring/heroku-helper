@@ -11,7 +11,7 @@ import scala.Some
 
 object CLI extends App {
 
-  class Cmd(apiKey: String) extends CommandInterpreter("heroku-helper") {
+  class Console(apiKey: String) extends CommandInterpreter("heroku-helper") {
 
     override def StartCommandIdentifier = "abcdefghijklmnopqrstuvwxyz" +
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
@@ -20,6 +20,11 @@ object CLI extends App {
     override def primaryPrompt = "-> "
 
     override def secondaryPrompt = "--> "
+
+    override def handleException(e:Exception) : CommandAction = {
+      logger.error(e.getMessage)
+      KeepGoing
+    }
 
     val configLoader: ConfigLoader = new FileConfigLoader(LocalConfigFile)
     val appsService: AppsService = new AppsServiceImpl(apiKey, Git, configLoader)
@@ -51,14 +56,24 @@ object CLI extends App {
   val apiKey: Option[String] = netrc.apiKey(netrc.DefaultPath)
 
   def console(apiKey: String) = {
-    val cmd = new Cmd(apiKey)
+
+    try{
+
+    val cmd = new Console(apiKey)
     logger.level = Debug
     logger.info(Header)
+    logger.debug("------")
     logger.debug("using apiKey: " + apiKey + " from: " + netrc.DefaultPath)
     logger.info("available commands: " + cmd.handlers.map(_.CommandName).mkString(", "))
     logger.info("run `help command` for more info")
     cmd.handleCommand(Some("folder-info"))
     cmd.mainLoop
+    } catch {
+      case e : Throwable => {
+        logger.error("An error has occured: " + e.getMessage)
+        System.exit(1)
+      }
+    }
   }
 
   def logError = {

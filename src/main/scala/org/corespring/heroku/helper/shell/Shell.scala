@@ -4,16 +4,21 @@ import sys.process.ProcessLogger
 
 trait Shell {
   /** Execute a command and return the response */
-  def run(cmd: String): String
+  def run(cmd: String): CmdResult
 }
+
+
+case class CmdResult(name:String,out:String,err:String,exitCode:Int)
+
 
 object Shell extends Shell {
 
   /** Run a shell command and return the output
     */
-  def run(cmd: String): String = {
+  def run(cmd: String): CmdResult = {
 
     var outLog: String = ""
+    var errLog: String = ""
 
     val logger: ProcessLogger = new ProcessLogger {
 
@@ -24,18 +29,13 @@ object Shell extends Shell {
       }
 
       def err(s: => String) {
-        org.corespring.heroku.helper.log.logger.info(s)
+        errLog += (s + "\n")
       }
     }
 
     import scala.sys.process._
 
-    try {
-      cmd ! logger
-    } catch {
-      case io: java.io.IOException => outLog = "Failed to execute: [" + cmd + "]"
-    }
-
-    outLog
+    val exitCode = cmd ! logger
+    CmdResult(cmd,outLog,errLog,exitCode)
   }
 }

@@ -3,7 +3,7 @@ package org.corespring.heroku.helper.handlers
 import org.specs2.mutable.Specification
 import grizzled.readline.{Cursor, Delim, LineToken, CompletionToken}
 import org.corespring.heroku.helper.shell.git.GitInfo
-import org.corespring.heroku.helper.shell.Shell
+import org.corespring.heroku.helper.shell.{CmdResult, Shell}
 import org.corespring.heroku.helper.models._
 import org.corespring.heroku.helper.models.HerokuAppConfig
 import org.corespring.heroku.helper.models.Config
@@ -19,6 +19,8 @@ class PushHandlerTest extends Specification {
       def repos(): List[(String, String)] = repos
 
       def branches(): List[String] = branches
+
+      def shortCommitHash: String = "XXXX"
     }
 
     class MockConfigLoader(config: Config = new Config) extends ConfigLoader {
@@ -42,6 +44,10 @@ class PushHandlerTest extends Specification {
       def branches(): List[String] = branches
 
       def releases(app: HerokuApp): List[Release] = releases
+
+      def shortCommitHash = "XXXX"
+
+      def loadHerokuConfigFor(app: HerokuApp): Map[String, String] = Map()
     }
 
     val mockApps = new MockAppsService(
@@ -53,7 +59,7 @@ class PushHandlerTest extends Specification {
       mockApps,
       new Shell {
         /** Execute a command and return the response */
-        def run(cmd: String): String = cmd
+        def run(cmd: String): CmdResult = CmdResult(cmd, cmd, "", 0)
       })
 
     "complete repo correctly" in {
@@ -93,9 +99,9 @@ class PushHandlerTest extends Specification {
       val shellLog = new Shell {
         var log: String = ""
 
-        def run(cmd: String): String = {
+        def run(cmd: String): CmdResult = {
           log += (cmd + "\n")
-          cmd
+          CmdResult(cmd, cmd, "", 0)
         }
       }
 
@@ -106,21 +112,23 @@ class PushHandlerTest extends Specification {
           after = Seq("after 1", "after 2"))
       )
 
+      val mockApp = HerokuApp(gitRemote = "heroku", name = "my-cool-heroku-app")
 
       val mockApps = new MockAppsService(
         config = Some(mockConfig),
-        apps = List(HerokuApp(gitRemote = "heroku", name = "my-cool-heroku-app")),
+        apps = List(mockApp),
         branches = List("master"))
 
       val handler = new PushHandler(mockApps, shellLog)
 
-      val expected = """before 1
-                       |before 2
-                       |git push heroku master:master
-                       |after 1
-                       |after 2
-                       | """.stripMargin
-
+      val expectedTemplate = """before 1 ${tmpFile}
+                               |before 2 ${tmpFile}
+                               |git push heroku master:master
+                               |after 1 ${tmpFile}
+                               |after 2 ${tmpFile}
+                               | """.stripMargin
+      import org.corespring.heroku.helper.string.utils._
+      val expected = interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)))
       handler.runCommand("push", "heroku master")
       shellLog.log.trim === expected.trim
     }
