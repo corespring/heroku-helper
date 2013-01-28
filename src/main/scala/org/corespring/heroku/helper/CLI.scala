@@ -26,7 +26,7 @@ object CLI extends App {
       KeepGoing
     }
 
-    val configLoader: ConfigLoader = new FileConfigLoader(LocalConfigFile)
+    val configLoader: ConfigLoader = new TypesafeConfigConfigLoader(LocalConfigFile)
     val appsService: AppsService = new AppsServiceImpl(apiKey, Git, configLoader)
 
     val handlers: List[CommandHandler] = List(
