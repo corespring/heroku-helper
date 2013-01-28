@@ -15,16 +15,14 @@ case class HerokuAppConfig(name: String,
                            rollback: Rollback = new Rollback)
 
 
-
 abstract class Action(before: Seq[String] = List(),
                       after: Seq[String] = List(),
-                      cmd: String
-                       )
+                      cmd: String )
 
 
 case class Push(before: Seq[String] = Seq(),
                 after: Seq[String] = Seq(),
-                cmd: String = "git push ${gitRemote} ${branch}:master") extends Action(before, after, cmd) {
+                cmd: String = Push.DefaultCmd) extends Action(before, after, cmd) {
 
   def prepareCommand(gitRemote: String, branch: String): String = {
     org.corespring.heroku.helper.string.utils.interpolate(cmd,
@@ -33,9 +31,13 @@ case class Push(before: Seq[String] = Seq(),
   }
 }
 
+object Push {
+  val DefaultCmd = "git push ${gitRemote} ${branch}:master"
+}
+
 case class Rollback(before: Seq[String] = Seq(),
                     after: Seq[String] = Seq(),
-                    cmd: String = "heroku releases:rollback ${version} --app ${app}") extends Action(before, after, cmd) {
+                    cmd: String = Rollback.DefaultCmd) extends Action(before, after, cmd) {
 
   def prepareCommand(version: String, app: String): String = {
     org.corespring.heroku.helper.string.utils.interpolate(cmd,
@@ -43,4 +45,8 @@ case class Rollback(before: Seq[String] = Seq(),
       ("app", app)
     )
   }
+}
+
+object Rollback {
+  val DefaultCmd = "heroku releases:rollback ${version} --app ${app}"
 }

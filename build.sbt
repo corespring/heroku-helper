@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "org.clapper" %% "grizzled-scala" % "1.0.13",
   "com.codahale" % "jerkson_2.9.1" % "0.5.0",
   "org.specs2" %% "specs2" % "1.12.2" % "test",
+  "com.typesafe" % "config" % "1.0.0",
   "org.scalaj" %% "scalaj-http" % "0.3.6" )
 
 resolvers ++= Seq(
