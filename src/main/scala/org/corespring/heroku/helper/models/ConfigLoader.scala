@@ -62,13 +62,21 @@ class TypesafeConfigConfigLoader(path: String) extends ConfigLoader {
   private def toHerokuAppConfig(typesafeConfig: TConfig): HerokuAppConfig = {
     import collection.JavaConverters._
 
+    /** Load a property from the Typesafe config object.
+      * If an error is thrown provide a default
+      * @param dataFn - the function that returns the data and may throw an exception
+      * @param convertor - the function that converts it from A => B
+      * @param default - the default value
+      * @tparam A - A Typesafe config type
+      * @tparam B - The return type
+      * @return
+      */
     def load[A, B](dataFn: (() => A), convertor: (A => B), default: B): B = {
       try {
         convertor(dataFn())
       }
       catch {
         case e: Throwable => {
-          println("e: " + e.getMessage)
           default
         }
       }
