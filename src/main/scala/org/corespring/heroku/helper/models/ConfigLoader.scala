@@ -32,3 +32,32 @@ class FileConfigLoader(path: String) extends ConfigLoader {
   }
 }
 
+class TypesafeConfigConfigLoader(path: String) extends ConfigLoader {
+
+  import com.typesafe.config.{ConfigParseOptions, ConfigResolveOptions, ConfigFactory}
+  import com.typesafe.config.{Config => TConfig}
+
+  def load: Config = {
+    //import collection.JavaConversions._
+    import collection.JavaConverters._
+
+    val parseOptions: ConfigParseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
+    val typesafeConfig: TConfig = ConfigFactory.load(path, parseOptions, ConfigResolveOptions.defaults())
+    println(typesafeConfig)
+    val appTConfigs: java.util.List[_] = typesafeConfig.getConfigList("appConfigs")
+    val list = appTConfigs.asScala.toList.map(_.asInstanceOf[TConfig])
+    val c: List[HerokuAppConfig] = list.map(toHerokuAppConfig)
+    new Config
+  }
+
+  private def toHerokuAppConfig(typesafeConfig: TConfig): HerokuAppConfig = {
+    new HerokuAppConfig(
+      typesafeConfig.getString("gitRemote"),
+      typesafeConfig.getString("name")
+    )
+  }
+
+  def save(config: Config) {
+    throw new RuntimeException("Save not supported")
+  }
+}
