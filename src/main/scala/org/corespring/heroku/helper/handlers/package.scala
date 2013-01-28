@@ -269,6 +269,7 @@ package object handlers {
 
     def shell() = shell
 
+
     def runCommand(command: String, args: String): CommandAction = {
 
       val split = args.split(" ").toList
@@ -279,11 +280,36 @@ package object handlers {
             case Some(app) => {
               appsService.loadConfigFor(app) match {
                 case Some(config) => {
-                  config.rollback.before.foreach(script => logger.info(runScript(script)))
-                  val finalCmd = config.rollback.prepareCommand(version, appName)
-                  logger.debug("running push: " + finalCmd)
-                  logger.info(runScript(finalCmd))
-                  config.push.after.foreach(script => logger.info(runScript(script)))
+                  appsService.releases(app).find(_.name == version) match {
+
+                    case Some(release) => {
+
+                      if (release.name == appsService.currentRelease(app).name) {
+                        logger.info("Already at this release")
+                      }
+                      else {
+
+                        def writeReleaseConfigToFile: String = {
+                          val envJson = Json.generate(release.env)
+                          logger.debug("env:")
+                          logger.debug(envJson)
+                          val filename = ".rollback-" + release.name
+                          org.corespring.file.utils.write(filename, envJson)
+                          filename
+                        }
+                        val tmpFile = writeReleaseConfigToFile
+
+                        def run(script: String): String = runScript(script, release.commit + " " + tmpFile)
+
+                        config.rollback.before.foreach(script => logger.info(run(script)))
+                        val finalCmd = config.rollback.prepareCommand(version, appName)
+                        logger.debug("running rollback: " + finalCmd)
+                        logger.info(runScript(finalCmd))
+                        config.push.after.foreach(script => logger.info(run(script)))
+                      }
+                    }
+                    case _ => logger.info("Can't find release information for: " + version)
+                  }
                 }
                 case _ => logger.info("no config available - add one!")
               }

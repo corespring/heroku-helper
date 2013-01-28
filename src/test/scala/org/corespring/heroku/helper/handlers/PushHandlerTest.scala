@@ -24,9 +24,9 @@ class PushHandlerTest extends Specification {
     }
 
     class MockConfigLoader(config: Config = new Config) extends ConfigLoader {
-      def config(): Config = config
+      def load(): Config = config
 
-      def saveConfig(config: Config) {}
+      def save(config: Config) {}
     }
 
     class MockAppsService(apps: List[HerokuApp] = List(),

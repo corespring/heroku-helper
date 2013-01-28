@@ -11,13 +11,13 @@ class ConfigLoaderTest extends Specification{
 
       val testPath= "src/test/resources/org/corespring/heroku/helper/models/configLoader"
       val loader = new FileConfigLoader(testPath + "/not-created.json")
-      loader.config !== null
+      loader.load !== null
       new File(testPath + "/not-created.json").delete()
     }
 
     "load a config with no path" in {
       val loader = new FileConfigLoader(".not-created.json")
-      loader.config !== null
+      loader.load !== null
       new File(".not-created.json").delete()
     }
   }

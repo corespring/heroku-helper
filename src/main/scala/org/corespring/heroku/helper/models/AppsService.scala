@@ -70,7 +70,7 @@ class AppsServiceImpl(apiKey: String, git: GitInfo, configLoader: ConfigLoader) 
 
   }
 
-  def loadConfigFor(app: HerokuApp): Option[HerokuAppConfig] = configLoader.config.appConfigByName(app.name)
+  def loadConfigFor(app: HerokuApp): Option[HerokuAppConfig] = configLoader.load.appConfigByName(app.name)
 
   def branches : List[String] = git.branches
 

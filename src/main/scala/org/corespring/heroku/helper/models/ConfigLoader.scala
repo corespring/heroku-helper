@@ -1,8 +1,9 @@
 package org.corespring.heroku.helper.models
 
 trait ConfigLoader {
-  def config: Config
-  def saveConfig(config: Config): Unit
+  def load: Config
+
+  def save(config: Config): Unit
 }
 
 class FileConfigLoader(path: String) extends ConfigLoader {
@@ -10,7 +11,7 @@ class FileConfigLoader(path: String) extends ConfigLoader {
   import com.codahale.jerkson.Json._
   import java.io.File
 
-  def config: Config = {
+  def load: Config = {
 
     val configFile = new File(path)
 
@@ -19,15 +20,15 @@ class FileConfigLoader(path: String) extends ConfigLoader {
     }
     else {
       val defaultConfig = new Config
-      saveConfig(defaultConfig)
+      save(defaultConfig)
       defaultConfig
     }
   }
 
-  def saveConfig(config: Config) {
+  def save(config: Config) {
     val json = generate(config)
     import org.corespring.file.utils._
     write(path, json)
   }
-
 }
+

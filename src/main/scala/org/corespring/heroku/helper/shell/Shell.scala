@@ -11,9 +11,10 @@ trait Shell {
 case class CmdResult(name:String,out:String,err:String,exitCode:Int)
 
 
+//TODO: Pipe out/error to console in realtime.
 object Shell extends Shell {
 
-  /** Run a shell command and return the output
+  /** Run a shell command and return the result of the command
     */
   def run(cmd: String): CmdResult = {
 
