@@ -42,7 +42,7 @@ object CLI extends App {
   }
 
 
-  val LocalConfigFile = ".heroku-helper-config.json"
+  val LocalConfigFile = ".heroku-helper.conf"
 
   val Header = {
     val raw = """
