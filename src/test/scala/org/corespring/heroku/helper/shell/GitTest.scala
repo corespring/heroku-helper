@@ -7,9 +7,6 @@ class GitTest extends Specification {
 
   "Git" should {
 
-    class MockShell(response: String) extends Shell {
-      def run(cmd: String) = CmdResult(cmd,response,"",0)
-    }
 
     "parse remote" in {
 

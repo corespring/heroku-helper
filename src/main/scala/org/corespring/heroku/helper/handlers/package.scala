@@ -28,6 +28,14 @@ package object handlers {
 
   trait ShellRunning {
 
+    def out(s: String) {
+      logger.info(s)
+    }
+
+    def err(s: String) {
+      logger.error(s)
+    }
+
     /** The shell to use */
     def shell: Shell
 
@@ -37,10 +45,10 @@ package object handlers {
       */
     def runScript(script: String, params: String = ""): String = {
       val result: CmdResult = if (params.isEmpty) {
-        shell.run(script)
+        shell.run(script, out, err)
       }
       else {
-        shell.run(script + " " + params)
+        shell.run(script + " " + params, out, err)
       }
 
       logger.debug(result.name + " code: " + result.exitCode)
@@ -343,6 +351,32 @@ package object handlers {
       () =>
         logger.info("directory: " + Shell.run("pwd"))
         logger.info("commit hash: " + Shell.run("git rev-parse --short HEAD"))
+    }
+  }
+
+  class SetEnvironmentVariablesHandler(environmentVariables: List[EnvironmentVariables], shell: Shell)
+    extends CommandHandler with ShellRunning {
+    val CommandName = "set-env-vars"
+    val Help = "set env vars based on what it is configured in .heroku-helper-env.conf"
+
+    def shell() = shell
+
+    def runCommand(command: String, args: String): CommandAction = wrap {
+      () =>
+
+        logger.info("going to update all the environment variables")
+        logger.info("apps:" + environmentVariables.map(_.herokuName).mkString(", "))
+        environmentVariables.foreach {
+          ev: EnvironmentVariables =>
+
+            val cmd: String =
+              "heroku config:set " +
+                ev.vars.map((kv: (String, String)) => kv._1 + "=" + kv._2).mkString(" ") +
+                " --app " + ev.herokuName
+
+            logger.debug("running: " + cmd)
+            shell.run(cmd, out, err)
+        }
     }
   }
 

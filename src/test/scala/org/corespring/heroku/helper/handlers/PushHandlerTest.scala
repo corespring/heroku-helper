@@ -3,7 +3,7 @@ package org.corespring.heroku.helper.handlers
 import org.specs2.mutable.Specification
 import grizzled.readline.{Cursor, Delim, LineToken, CompletionToken}
 import org.corespring.heroku.helper.shell.git.GitInfo
-import org.corespring.heroku.helper.shell.{CmdResult, Shell}
+import org.corespring.heroku.helper.shell.{MockShell, CmdResult, Shell}
 import org.corespring.heroku.helper.models._
 import org.corespring.heroku.helper.models.HerokuAppConfig
 import org.corespring.heroku.helper.models.Config
@@ -55,12 +55,7 @@ class PushHandlerTest extends Specification {
       branches = List("branch_one", "branch_two")
     )
 
-    val handler = new PushHandler(
-      mockApps,
-      new Shell {
-        /** Execute a command and return the response */
-        def run(cmd: String): CmdResult = CmdResult(cmd, cmd, "", 0)
-      })
+    val handler = new PushHandler( mockApps, new MockShell("") )
 
     "complete repo correctly" in {
 
@@ -102,6 +97,11 @@ class PushHandlerTest extends Specification {
         def run(cmd: String): CmdResult = {
           log += (cmd + "\n")
           CmdResult(cmd, cmd, "", 0)
+        }
+
+        def run(cmd: String, outHandler: (String => Unit), errHandler: (String => Unit)): CmdResult = {
+          log += (cmd + "\n")
+          CmdResult(cmd,cmd,"",0)
         }
       }
 

@@ -1,7 +1,7 @@
 package org.corespring.heroku.helper.models
 
 
-case class Config(appConfigs: Seq[HerokuAppConfig] = Seq()) {
+case class Config(startupValidation:Option[String] = None, appConfigs: Seq[HerokuAppConfig] = Seq()) {
 
   def appConfigByName(name: String): Option[HerokuAppConfig] = appConfigs.find(_.name == name)
 
