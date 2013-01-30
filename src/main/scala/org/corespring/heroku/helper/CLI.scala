@@ -23,88 +23,78 @@ object CLI extends App {
   val LocalConfigFile = ".heroku-helper.conf"
   val LocalEnvironmentVariablesFile = ".heroku-helper-env.conf"
 
-  val apiKey: Option[String] = netrc.apiKey(netrc.DefaultPath)
+  val apiKey: String = netrc.apiKey(netrc.DefaultPath) match {
+    case Some(key) => key
+    case None => throw new RuntimeException("No api key found")
+  }
 
   val configLoader: ConfigLoader = new TypesafeConfigConfigLoader(LocalConfigFile)
 
-  val environmentVariables : List[EnvironmentVariables] = new TypesafeEnvironmentVariablesLoader(LocalEnvironmentVariablesFile).load
+  val environmentVariables: List[EnvironmentVariables] = new TypesafeEnvironmentVariablesLoader(LocalEnvironmentVariablesFile).load
 
-  class Console(apiKey: String, configLoader: ConfigLoader) extends CommandInterpreter("heroku-helper") {
+  val appsService: AppsService = new AppsServiceImpl(apiKey, Git, configLoader)
 
-    override def StartCommandIdentifier = "abcdefghijklmnopqrstuvwxyz" +
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-      "0123456789.-"
+  val handlers: List[CommandHandler] = List(
+    new AboutHandler,
+    new ExitHandler,
+    new ViewReposHandler,
+    new ViewRepoHandler(appsService),
+    new ViewReleasesHandler(appsService),
+    new PushHandler(appsService, Shell),
+    new RollbackHandler(appsService, Shell),
+    new SetEnvironmentVariablesHandler(environmentVariables, Shell),
+    new FolderInfoHandler)
 
-    override def primaryPrompt = "-> "
-
-    override def secondaryPrompt = "--> "
-
-    override def handleException(e: Exception): CommandAction = {
-      logger.error(e.getMessage)
-      KeepGoing
-    }
-
-    val appsService: AppsService = new AppsServiceImpl(apiKey, Git, configLoader)
-
-    val handlers: List[CommandHandler] = List(
-      new AboutHandler,
-      new ExitHandler,
-      new ViewReposHandler,
-      new ViewRepoHandler(appsService),
-      new ViewReleasesHandler(appsService),
-      new PushHandler(appsService, Shell),
-      new RollbackHandler(appsService, Shell),
-      new SetEnvironmentVariablesHandler(environmentVariables, Shell),
-      new FolderInfoHandler)
-  }
-
-  def console(apiKey: String) = {
-
-    try {
-
-      val cmd = new Console(apiKey, configLoader)
-      logger.level = Debug
-      logger.debug("------")
-      logger.debug("using apiKey: " + apiKey + " from: " + netrc.DefaultPath)
-      logger.info("available commands: " + cmd.handlers.map(_.CommandName).mkString(", "))
-      logger.info("run `help command` for more info")
-      cmd.handleCommand(Some("folder-info"))
-      cmd.mainLoop
-    } catch {
-      case e: Throwable => {
-        logger.error("An error has occured: " + e.getMessage)
-        System.exit(1)
+  args.toList match {
+    case Nil => launchConsole
+    case command :: params => {
+      handlers.find(_.CommandName == command) match {
+        case Some(handler) => handler.runCommand(command, params.mkString(" "))
+        case _ => launchConsole
       }
     }
   }
 
-  def logApiKeyError = {
+  /** Launch the interactive console
+    *
+    */
+  private def launchConsole {
+
+    def logApiKeyError = {
+      logger.info(Header)
+      logger.error("No api key found - have you logged in with the heroku toolbelt yet?")
+    }
+
+    def logInvalidEnvironment(validationScript: String) = logger.error("The validation script failed: " + validationScript)
+
     logger.info(Header)
-    logger.error("No api key found - have you logged in with the heroku toolbelt yet?")
-  }
 
-  def logInvalidEnvironment(validationScript: String) = logger.error("The validation script failed: " + validationScript)
-
-  logger.info(Header)
-
-  val validationResult: CmdResult = configLoader.load.startupValidation match {
-    case Some(validationScript) => {
-      Shell.run(validationScript,
-        (s: String) => logger.info(s),
-        (s: String) => logger.debug(s))
+    val validationResult: CmdResult = configLoader.load.startupValidation match {
+      case Some(validationScript) => {
+        Shell.run(validationScript,
+          (s: String) => logger.info(s),
+          (s: String) => logger.debug(s))
+      }
+      case _ => CmdResult.empty
     }
-    case _ => CmdResult.empty
-  }
 
-  validationResult match {
-    case CmdResult(_, _, _, 0) => {
-      apiKey match {
-        case Some(key) => console(key)
-        case _ => logApiKeyError
+    validationResult match {
+      case CmdResult(_, _, _, 0) => run
+      case _ => logger.error("Environment validation failed: see: " + validationResult.name)
+    }
+
+    def run {
+
+      try {
+        val cmd = new Console(handlers)
+        cmd.mainLoop
+      } catch {
+        case e: Throwable => {
+          logger.error("An error has occured: " + e.getMessage)
+          System.exit(1)
+        }
       }
     }
-    case _ => logger.error("Environment validation failed: see: " + validationResult.name)
   }
-
 }
 
