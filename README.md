@@ -12,6 +12,16 @@ When the helper is launched it looks for 2 files to load from the same folder th
 * .heroku-helper.conf
 * .heroku-helper-env.conf
 
+## Available commands:
+* help - display help
+* repos - list all the heroku repos for this folder
+* repo {name} - list information for the given repo
+* push {gitRemoteName} {branch} - push this code base to the git remote using the given branch
+* rollback {app} {versionId} - roll the heroku app to the given versionId (short commit hash)
+* releases {app} - list the releases for the given app
+* set-env-vars - set all the environment variables
+* folder-info - info about the current directory (path + short commit hash)
+
 ## .heroku-helper.conf
 This file defines scripts that should be run for a specific heroku app.
 
