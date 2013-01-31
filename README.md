@@ -77,7 +77,7 @@ This file contains environment variables and other sensitive data for your herok
           ...
     ]
 
-To set the vars for an app call 'set-env-vars'
+To set the vars for all apps call the 'set-env-vars'
 
 ## System requirements
 * To interact with the Heroku REST Api, the helper uses the ~/.netrc file for authentication (as does the heroku toolbelt).
