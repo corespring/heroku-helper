@@ -5,12 +5,10 @@ case class Config(startupValidation:Option[String] = None, appConfigs: Seq[Herok
 
   def appConfigByName(name: String): Option[HerokuAppConfig] = appConfigs.find(_.name == name)
 
-  def appConfigByGitRemote(gitRemote: String): Option[HerokuAppConfig] = appConfigs.find(_.gitRemoteName == gitRemote)
 }
 
 
 case class HerokuAppConfig(name: String,
-                           gitRemoteName: String,
                            push: Push = new Push,
                            rollback: Rollback = new Rollback)
 

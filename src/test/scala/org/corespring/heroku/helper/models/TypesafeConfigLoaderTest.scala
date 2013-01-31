@@ -24,11 +24,6 @@ class TypesafeConfigLoaderTest extends Specification{
       configOne.rollback.after === List("rollback_after_one", "rollback_after_two")
     }
 
-    "load throw an error in" in {
-      val typesafeLoader = new TypesafeConfigConfigLoader(basePath + "/noGitremote.conf")
-      typesafeLoader.load must throwA[InvalidConfigException]
-    }
-
     "load two configs " in {
       val typesafeLoader = new TypesafeConfigConfigLoader(basePath + "/two.conf")
       val configs = typesafeLoader.load.appConfigs

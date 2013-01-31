@@ -60,7 +60,6 @@ class TypesafeConfigConfigLoader(path: String) extends ConfigLoader with Typesaf
     }
 
     new HerokuAppConfig(
-      gitRemoteName = typesafeConfig.getString("gitRemoteName"),
       name = typesafeConfig.getString("name"),
       push = loadWithDefault(() => typesafeConfig.getConfig("push"), toPush, new Push),
       rollback = loadWithDefault(() => typesafeConfig.getConfig("rollback"), toRollback, new Rollback)

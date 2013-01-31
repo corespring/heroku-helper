@@ -29,27 +29,6 @@ class PushHandlerTest extends Specification {
       def save(config: Config) {}
     }
 
-    class MockAppsService(apps: List[HerokuApp] = List(),
-                          config: Option[HerokuAppConfig] = None,
-                          release: Release = new Release(),
-                          branches: List[String] = List(),
-                          releases: List[Release] = List()
-                           ) extends AppsService {
-      def apps(): List[HerokuApp] = apps
-
-      def loadConfigFor(app: HerokuApp): Option[HerokuAppConfig] = config
-
-      def currentRelease(app: HerokuApp): Release = release
-
-      def branches(): List[String] = branches
-
-      def releases(app: HerokuApp): List[Release] = releases
-
-      def shortCommitHash = "XXXX"
-
-      def loadHerokuConfigFor(app: HerokuApp): Map[String, String] = Map()
-    }
-
     val mockApps = new MockAppsService(
       apps = List(HerokuApp("one", "one"), HerokuApp("two", "two")),
       branches = List("branch_one", "branch_two")
@@ -91,22 +70,9 @@ class PushHandlerTest extends Specification {
 
     "run the command" in {
 
-      val shellLog = new Shell {
-        var log: String = ""
-
-        def run(cmd: String): CmdResult = {
-          log += (cmd + "\n")
-          CmdResult(cmd, cmd, "", 0)
-        }
-
-        def run(cmd: String, outHandler: (String => Unit), errHandler: (String => Unit)): CmdResult = {
-          log += (cmd + "\n")
-          CmdResult(cmd,cmd,"",0)
-        }
-      }
+      val shellLog = new MockShell
 
       val mockConfig = new HerokuAppConfig(name = "my-cool-heroku-app",
-        gitRemoteName = "heroku",
         push = new Push(
           before = Seq("before 1", "before 2"),
           after = Seq("after 1", "after 2"))
@@ -129,8 +95,8 @@ class PushHandlerTest extends Specification {
                                | """.stripMargin
       import org.corespring.heroku.helper.string.utils._
       val expected = interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)))
-      handler.runCommand("push", "heroku master")
-      shellLog.log.trim === expected.trim
+      handler.runCommand("push", "my-cool-heroku-app master")
+      shellLog.cmds.mkString("\n") === expected.trim
     }
   }
 

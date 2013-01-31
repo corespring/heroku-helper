@@ -9,7 +9,6 @@ import grizzled.readline._
 import scala.Some
 import grizzled.readline.LineToken
 import annotation.tailrec
-import collection.immutable.ListSet
 import com.codahale.jerkson.Json
 
 package object handlers {
@@ -59,6 +58,29 @@ package object handlers {
       }
       result.out
     }
+  }
+
+  trait AppsHelper {
+    def service: AppsService
+
+    /** A helper method that looks up an app and a dependent object
+      */
+    def withApp[A](name: String,
+                   appConverter: (HerokuApp => Option[A]))
+                  (body: ((HerokuApp, A) => Unit)) {
+      service.apps.find(_.name == name) match {
+        case Some(app) => {
+          appConverter(app) match {
+            case Some(thing) => body(app, thing)
+            case _ => logger.info("can't find thing for app: " + name)
+          }
+        }
+        case _ => {
+          logger.info("can't find app with name: " + name)
+        }
+      }
+    }
+
   }
 
   abstract class BaseHandler extends CommandHandler {
@@ -112,6 +134,8 @@ package object handlers {
       val asContextFunctions = options.map(o => ((s: String) => o))
       completeContextually(token, allTokens, line, asContextFunctions: _*)
     }
+
+
   }
 
 
@@ -141,9 +165,9 @@ package object handlers {
   }
 
 
-  class ViewReposHandler extends CommandHandler {
-    val CommandName = "repos"
-    val Help = "View the heroku repos that are configured for this git folder"
+  class ViewAppsHandler extends CommandHandler {
+    val CommandName = "apps"
+    val Help = "View the heroku apps that are configured for this git folder"
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
@@ -173,9 +197,9 @@ package object handlers {
     }
   }
 
-  class ViewRepoHandler(appsService: AppsService) extends BaseHandler {
-    val CommandName = "repo"
-    val Help = "View more information about a heroku repo"
+  class InfoHandler(appsService: AppsService) extends BaseHandler {
+    val CommandName = "info"
+    val Help = "View more information about a heroku application"
 
     val apps = appsService.apps
     val appNames = apps.map(_.name)
@@ -188,7 +212,7 @@ package object handlers {
       () =>
 
         apps.find(a => a.name == args) match {
-          case None => logger.info("Can't find this repo? try again")
+          case None => logger.info("Can't find this app? try again")
           case Some(app) => {
 
             appsService.loadConfigFor(app) match {
@@ -205,11 +229,16 @@ package object handlers {
   }
 
 
-  class PushHandler(appsService: AppsService, shell: Shell) extends BaseHandler with ShellRunning {
+  class PushHandler(appsService: AppsService, shell: Shell)
+    extends BaseHandler
+    with ShellRunning
+    with AppsHelper {
     val CommandName = "push"
     val Help = "push this git repository to a heroku remote repository"
 
     def shell() = shell
+
+    def service() = appsService
 
     /** Push can assist with the 2 params - 1st is the heroku repo, 2nd is the branch
       */
@@ -236,51 +265,49 @@ package object handlers {
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
 
+        def isCurrentRelease(app: HerokuApp): Boolean = {
+          val currentRelease: Release = appsService.currentRelease(app)
+          logger.debug("current release: " + currentRelease)
+          logger.debug("short commit hash: " + appsService.shortCommitHash)
+          currentRelease.commit == appsService.shortCommitHash
+        }
+
         args.split(" ").toList match {
-          case List() => logger.info("huh? - try again")
-          case List(repo) => logger.info("add a branch")
-          case List(gitRemote, branch) => {
+          case List(appName, branch) => {
 
-            appsService.apps.find(_.gitRemote == gitRemote) match {
-              case Some(app) => {
+            withApp(appName, (app) => appsService.loadConfigFor(app)) {
+              (app: HerokuApp, config: HerokuAppConfig) =>
 
-                val currentRelease : Release = appsService.currentRelease(app)
-                logger.debug("current release: " + currentRelease)
-                logger.debug("short commit hash: " + appsService.shortCommitHash)
-
-                if ( currentRelease.commit == appsService.shortCommitHash) {
+                if (isCurrentRelease(app)) {
                   logger.info(app.name + " is already up to date - not pushing")
                 } else {
-                  appsService.loadConfigFor(app) match {
-                    case Some(config) => {
-                      val tmpFile = writeHerokuConfigToFile(app)
-                      config.push.before.foreach(script => logger.info(runScript(script, tmpFile)))
-                      val finalCmd = config.push.prepareCommand(gitRemote, branch)
-                      logger.info("running push: " + finalCmd)
-                      logger.info(runScript(finalCmd))
-                      config.push.after.foreach(script => logger.info(runScript(script, tmpFile)))
-                      //org.corespring.file.utils.delete(tmpFile)
-                    }
-                    case _ => logger.info("can't find a config - add one")
-                  }
-
+                  val tmpFile = writeHerokuConfigToFile(app)
+                  config.push.before.foreach(script => logger.info(runScript(script, tmpFile)))
+                  val finalCmd = config.push.prepareCommand(app.gitRemote, branch)
+                  logger.info("running push: " + finalCmd)
+                  logger.info(runScript(finalCmd))
+                  config.push.after.foreach(script => logger.info(runScript(script, tmpFile)))
                 }
-              }
-              case None => logger.info("can't find app for this remote:" + gitRemote)
             }
           }
+          case _ => logger.info("try again tou need to specify an app and a branch")
         }
+
         KeepGoing
     }
   }
 
 
-  class RollbackHandler(appsService: AppsService, shell: Shell) extends BaseHandler with ShellRunning {
+  class RollbackHandler(appsService: AppsService, shell: Shell)
+    extends BaseHandler
+    with ShellRunning with AppsHelper {
     val CommandName = "rollback"
     val Help = "rollback a heroku repo to an earlier version"
     val ErrorMsg = "you need to specify the heroku app name and the version"
 
     def shell() = shell
+
+    def service() = appsService
 
 
     def runCommand(command: String, args: String): CommandAction = {
@@ -289,45 +316,33 @@ package object handlers {
       split match {
         case List(appName, version) => {
 
-          appsService.apps.find(_.name == appName) match {
-            case Some(app) => {
-              appsService.loadConfigFor(app) match {
-                case Some(config) => {
-                  appsService.releases(app).find(_.name == version) match {
+          withApp(appName, (app) => appsService.loadConfigFor(app)) {
 
-                    case Some(release) => {
+            (app: HerokuApp, config: HerokuAppConfig) =>
 
-                      if (release.name == appsService.currentRelease(app).name) {
-                        logger.info("Already at this release")
-                      }
-                      else {
+              for {
+                release <- appsService.releases(app).find(_.name == version)
+                if (release.name != appsService.currentRelease(app).name)
+              } yield {
 
-                        def writeReleaseConfigToFile: String = {
-                          val envJson = Json.generate(release.env)
-                          logger.debug("env:")
-                          logger.debug(envJson)
-                          val filename = ".rollback-" + release.name
-                          org.corespring.file.utils.write(filename, envJson)
-                          filename
-                        }
-                        val tmpFile = writeReleaseConfigToFile
-
-                        def run(script: String): String = runScript(script, release.commit + " " + tmpFile)
-
-                        config.rollback.before.foreach(script => logger.info(run(script)))
-                        val finalCmd = config.rollback.prepareCommand(version, appName)
-                        logger.debug("running rollback: " + finalCmd)
-                        logger.info(runScript(finalCmd))
-                        config.push.after.foreach(script => logger.info(run(script)))
-                      }
-                    }
-                    case _ => logger.info("Can't find release information for: " + version)
-                  }
+                def writeReleaseConfigToFile: String = {
+                  val envJson = Json.generate(release.env)
+                  val filename = ".rollback-" + release.name
+                  org.corespring.file.utils.write(filename, envJson)
+                  filename
                 }
-                case _ => logger.info("no config available - add one!")
+
+                val tmpFile = writeReleaseConfigToFile
+
+                def run(script: String): String = runScript(script, release.commit + " " + tmpFile)
+
+                config.rollback.before.foreach(script => logger.info(run(script)))
+                val finalCmd = config.rollback.prepareCommand(version, appName)
+                logger.debug("running rollback: " + finalCmd)
+                logger.info(runScript(finalCmd))
+                config.rollback.after.foreach(script => logger.info(run(script)))
               }
-            }
-            case _ => logger.info("can't find app")
+
           }
         }
         case _ => logger.info(ErrorMsg)
@@ -359,7 +374,7 @@ package object handlers {
     }
   }
 
-  class SetEnvironmentVariablesHandler(environmentVariables: List[EnvironmentVariables], shell: Shell)
+  class SetEnvironmentVariablesHandler(appsService: AppsService, environmentVariables: List[EnvironmentVariables], shell: Shell)
     extends CommandHandler with ShellRunning {
     val CommandName = "set-env-vars"
     val Help = "set env vars based on what it is configured in .heroku-helper-env.conf"
@@ -368,19 +383,28 @@ package object handlers {
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
+        args.split(" ").toList match {
 
-        logger.info("going to update all the environment variables")
-        logger.info("apps:" + environmentVariables.map(_.herokuName).mkString(", "))
-        environmentVariables.foreach {
-          ev: EnvironmentVariables =>
+          case List(appName) => {
+            appsService.apps.find(_.name == appName) match {
+              case Some(app) => {
+                environmentVariables.find(_.herokuName == app.name) match {
+                  case Some(ev) => {
+                    val cmd: String =
+                      "heroku config:set " +
+                        ev.vars.map((kv: (String, String)) => kv._1 + "=" + kv._2).mkString(" ") +
+                        " --app " + ev.herokuName
 
-            val cmd: String =
-              "heroku config:set " +
-                ev.vars.map((kv: (String, String)) => kv._1 + "=" + kv._2).mkString(" ") +
-                " --app " + ev.herokuName
-
-            logger.debug("running: " + cmd)
-            shell.run(cmd, out, err)
+                    logger.debug("running: " + cmd)
+                    shell.run(cmd, out, err)
+                  }
+                  case _ => logger.info("can't find environment variables for: " + app.name)
+                }
+              }
+              case _ => logger.info("can't find app with name: " + appName)
+            }
+          }
+          case _ => logger.info("try again - you need to specify an app name")
         }
     }
   }

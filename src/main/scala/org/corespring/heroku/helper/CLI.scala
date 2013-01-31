@@ -37,12 +37,12 @@ object CLI extends App {
   val handlers: List[CommandHandler] = List(
     new AboutHandler,
     new ExitHandler,
-    new ViewReposHandler,
-    new ViewRepoHandler(appsService),
+    new ViewAppsHandler,
+    new InfoHandler(appsService),
     new ViewReleasesHandler(appsService),
     new PushHandler(appsService, Shell),
     new RollbackHandler(appsService, Shell),
-    new SetEnvironmentVariablesHandler(environmentVariables, Shell),
+    new SetEnvironmentVariablesHandler(appsService, environmentVariables, Shell),
     new FolderInfoHandler)
 
   args.toList match {
