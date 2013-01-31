@@ -2,6 +2,7 @@ package org.corespring.heroku.helper
 
 import grizzled.cmd.{Stop, KeepGoing, CommandAction, CommandHandler}
 import org.corespring.heroku.helper.models._
+import org.corespring.heroku.rest.models.Release
 import shell.{CmdResult, Git, Shell}
 import org.corespring.heroku.helper.log.logger
 import grizzled.readline._
@@ -243,7 +244,11 @@ package object handlers {
             appsService.apps.find(_.gitRemote == gitRemote) match {
               case Some(app) => {
 
-                if (appsService.currentRelease(app) == appsService.shortCommitHash) {
+                val currentRelease : Release = appsService.currentRelease(app)
+                logger.debug("current release: " + currentRelease)
+                logger.debug("short commit hash: " + appsService.shortCommitHash)
+
+                if ( currentRelease.commit == appsService.shortCommitHash) {
                   logger.info(app.name + " is already up to date - not pushing")
                 } else {
                   appsService.loadConfigFor(app) match {

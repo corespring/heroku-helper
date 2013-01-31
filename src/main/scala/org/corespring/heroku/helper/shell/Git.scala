@@ -15,7 +15,7 @@ class Git(shell: Shell) extends GitInfo {
       result.out
     }
     else {
-      throw new RuntimeException("Error running: git remote -v")
+      throw new RuntimeException("Error running: " + cmd + " result err: " + result.err)
     }
   }
 

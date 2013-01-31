@@ -44,7 +44,6 @@ class TypesafeEnvironmentVariablesLoader(file: String) extends EnvironmentVariab
   private def toMap(config: TConfig) : Map[String,String] = {
     import collection.JavaConverters._
     val set : List[(String,String)] = config.entrySet().asScala.toList.map{ e:java.util.Map.Entry[String,ConfigValue] =>
-      println(e)
       (e.getKey, e.getValue.unwrapped.toString)
     }
     set.toMap
