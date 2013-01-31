@@ -243,9 +243,9 @@ package object handlers {
     /** Push can assist with the 2 params - 1st is the heroku repo, 2nd is the branch
       */
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
-      val gitRemotes = appsService.apps.map(_.gitRemote)
+      val appNames = appsService.apps.map(_.name)
       val branches = appsService.branches
-      completeFromOptions(token, allTokens, line, gitRemotes, branches)
+      completeFromOptions(token, allTokens, line, appNames, branches)
     }
 
 

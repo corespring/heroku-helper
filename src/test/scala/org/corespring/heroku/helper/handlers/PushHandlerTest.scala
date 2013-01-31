@@ -30,7 +30,7 @@ class PushHandlerTest extends Specification {
     }
 
     val mockApps = new MockAppsService(
-      apps = List(HerokuApp("one", "one"), HerokuApp("two", "two")),
+      apps = List(HerokuApp("git_one", "one"), HerokuApp("git_two", "two")),
       branches = List("branch_one", "branch_two")
     )
 
