@@ -33,9 +33,7 @@ This file defines scripts that should be run for a specific heroku app.
          {
             #heroku app name
             name:"corespring-app"
-            #this is what its called by the local git repo
-            gitRemoteName : "corespring-app"
-
+            
             push:{
                #optional - override the push command
                #default: git push ${gitRemote} ${branch}:master
