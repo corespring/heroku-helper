@@ -25,10 +25,10 @@ When the helper is launched it looks for 2 files to load from the same folder th
 ## .heroku-helper.conf
 This file defines scripts that should be run for a specific heroku app.
 
-   # This script will run on launch - so you can validate that the environment is setup
-   startupValidation: "blah.sh"
-   # A list of configurations
-   appConfigs:[
+    # This script will run on launch - so you can validate that the environment is setup
+    startupValidation: "blah.sh"
+    # A list of configurations
+    appConfigs:[
 
          {
             #heroku app name
@@ -60,7 +60,7 @@ This file defines scripts that should be run for a specific heroku app.
             }
          }
          ...
-   ]
+    ]
 
 ## .heroku-helper-env.conf
 This file contains environment variables and other sensitive data for your heroku apps.
