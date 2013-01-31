@@ -375,7 +375,7 @@ package object handlers {
   }
 
   class SetEnvironmentVariablesHandler(appsService: AppsService, environmentVariables: List[EnvironmentVariables], shell: Shell)
-    extends CommandHandler with ShellRunning {
+    extends BaseHandler with ShellRunning {
     val CommandName = "set-env-vars"
     val Help = "set env vars based on what it is configured in .heroku-helper-env.conf"
 
@@ -383,29 +383,32 @@ package object handlers {
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
+
+        def runConfigSet(ev: EnvironmentVariables) {
+          val cmd: String =
+            "heroku config:set " +
+              ev.vars.map((kv: (String, String)) => kv._1 + "=" + kv._2).mkString(" ") +
+              " --app " + ev.herokuName
+
+          logger.debug("running: " + cmd)
+          shell.run(cmd, out, err)
+        }
+
         args.split(" ").toList match {
-
           case List(appName) => {
-            appsService.apps.find(_.name == appName) match {
-              case Some(app) => {
-                environmentVariables.find(_.herokuName == app.name) match {
-                  case Some(ev) => {
-                    val cmd: String =
-                      "heroku config:set " +
-                        ev.vars.map((kv: (String, String)) => kv._1 + "=" + kv._2).mkString(" ") +
-                        " --app " + ev.herokuName
-
-                    logger.debug("running: " + cmd)
-                    shell.run(cmd, out, err)
-                  }
-                  case _ => logger.info("can't find environment variables for: " + app.name)
-                }
-              }
-              case _ => logger.info("can't find app with name: " + appName)
+            environmentVariables.find(_.herokuName == appName) match {
+              case Some(ev) => runConfigSet(ev)
+              case _ => logger.info("can't find environment variables for: " + appName)
             }
           }
           case _ => logger.info("try again - you need to specify an app name")
         }
+    }
+
+
+    override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
+      val appNames = appsService.apps.map(_.name)
+      completeFromOptions(token,allTokens,line,appNames)
     }
   }
 
