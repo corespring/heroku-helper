@@ -1,6 +1,6 @@
 package org.corespring.heroku.helper.handlers
 
-import org.specs2.mutable.Specification
+import org.specs2.mutable.{After, Specification}
 import grizzled.readline.{Cursor, Delim, LineToken, CompletionToken}
 import org.corespring.heroku.helper.shell.git.GitInfo
 import org.corespring.heroku.helper.shell.{MockShell, CmdResult, Shell}
@@ -10,6 +10,7 @@ import org.corespring.heroku.helper.models.Config
 import org.corespring.heroku.helper.models.Push
 import grizzled.readline.LineToken
 import org.corespring.heroku.rest.models.Release
+import org.corespring.heroku.helper.testUtils.RemoveFileAfter
 
 class PushHandlerTest extends Specification {
 
@@ -34,7 +35,7 @@ class PushHandlerTest extends Specification {
       branches = List("branch_one", "branch_two")
     )
 
-    val handler = new PushHandler( mockApps, new MockShell("") )
+    val handler = new PushHandler(mockApps, new MockShell(""))
 
     "complete repo correctly" in {
 
@@ -68,7 +69,9 @@ class PushHandlerTest extends Specification {
     }
 
 
-    "run the command" in {
+    "run the command" in new RemoveFileAfter {
+
+      def filesToDeleteAfter: List[String] = List(".heroku-helper-tmp-my-cool-heroku-app.json")
 
       val shellLog = new MockShell
 
@@ -87,18 +90,21 @@ class PushHandlerTest extends Specification {
 
       val handler = new PushHandler(mockApps, shellLog)
 
-      val expectedTemplate = """before 1 ${tmpFile}
-                               |before 2 ${tmpFile}
+      val expectedTemplate = """before 1 ${tmpFile} ${appName}
+                               |before 2 ${tmpFile} ${appName}
                                |git push heroku master:master
-                               |after 1 ${tmpFile}
-                               |after 2 ${tmpFile}
+                               |after 1 ${tmpFile} ${appName}
+                               |after 2 ${tmpFile} ${appName}
                                | """.stripMargin
+
       import org.corespring.heroku.helper.string.utils._
-      val expected = interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)))
+
+      val expected = interpolate(expectedTemplate,
+        ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
       handler.runCommand("push", "my-cool-heroku-app master")
       shellLog.cmds.mkString("\n") === expected.trim
     }
   }
 
-
 }
+

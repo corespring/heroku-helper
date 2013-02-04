@@ -282,11 +282,11 @@ package object handlers {
                   logger.info(app.name + " is already up to date - not pushing")
                 } else {
                   val tmpFile = writeHerokuConfigToFile(app)
-                  config.push.before.foreach(script => logger.info(runScript(script, tmpFile)))
+                  config.push.before.foreach(script => logger.info(runScript(script, tmpFile + " " + app.name)))
                   val finalCmd = config.push.prepareCommand(app.gitRemote, branch)
                   logger.info("running push: " + finalCmd)
                   logger.info(runScript(finalCmd))
-                  config.push.after.foreach(script => logger.info(runScript(script, tmpFile)))
+                  config.push.after.foreach(script => logger.info(runScript(script, tmpFile + " " + app.name)))
                 }
             }
           }

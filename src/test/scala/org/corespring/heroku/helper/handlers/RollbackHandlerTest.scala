@@ -4,11 +4,14 @@ import org.specs2.mutable.Specification
 import org.corespring.heroku.helper.models.{Rollback, HerokuAppConfig, MockAppsService, HerokuApp}
 import org.corespring.heroku.rest.models.{Release}
 import org.corespring.heroku.helper.shell.MockShell
+import org.corespring.heroku.helper.testUtils.RemoveFileAfter
 
 class RollbackHandlerTest extends Specification {
 
   "RollbackHandler" should {
-    "rollback" in {
+    "rollback" in new RemoveFileAfter {
+
+      def filesToDeleteAfter: List[String] = List(".rollback-v1")
 
       val mockService = new MockAppsService(
         apps = List(
