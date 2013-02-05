@@ -3,6 +3,7 @@ package org.corespring.heroku.helper.shell
 import sys.process.ProcessLogger
 import scala.sys.process._
 
+/** Shell behaviour */
 trait Shell {
   /** Execute a command and return the response */
   def run(cmd: String): CmdResult
@@ -17,7 +18,9 @@ object CmdResult{
   def empty : CmdResult = CmdResult("","","",0)
 }
 
-//TODO: Pipe out/error to console in realtime.
+/** Wraps system.Process calls
+  *
+  */
 object Shell extends Shell {
 
   class SimpleLogger extends ProcessLogger {
@@ -48,6 +51,12 @@ object Shell extends Shell {
     }
   }
 
+  /** Runs shell command
+   * @param cmd - the command to run
+   * @param outHandler - a callback for handling the process output
+   * @param errHandler - a callback for handling the process errors
+   * @return a CmdResult
+   */
   def run(cmd: String, outHandler: (String => Unit), errHandler: (String => Unit)): CmdResult = {
     val logger: WithHandlerLogger = new WithHandlerLogger(outHandler, errHandler)
     val exitCode = cmd ! logger
