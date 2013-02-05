@@ -60,6 +60,18 @@ class BaseHandlerTest extends Specification with CompleterHelper {
 
   "BaseHandler" should {
 
+    def assertCompleteInput(handler:BaseHandler, cmd:String,expected:List[String]) = {
+       val tokens = tokenize(cmd) :+ Cursor
+       handler.complete("", tokens, cmd) === expected 
+    }
+
+    "complete using letters in a sequence" in {
+       val handler = new MockHandler(List("car","far","maritime","mart","hair"))
+       assertCompleteInput(handler, "mock ar", List("car", "far", "maritime", "mart", "hair"))
+       assertCompleteInput(handler, "mock mat", List("maritime", "mart"))
+       assertCompleteInput(handler, "mock mai", List("maritime"))
+    }
+
     "handle one level of options" in {
       val cmdString = "mock "
       val tokens = tokenize(cmdString) ::: List(Delim, Cursor)
@@ -68,7 +80,7 @@ class BaseHandlerTest extends Specification with CompleterHelper {
     }
 
     "handle one level of options - with string" in {
-      val cmdString = "mock o"
+      val cmdString = "mock on"
       val tokens = tokenize(cmdString) :+ Cursor
       println(tokens)
       handler.complete("", tokens, cmdString) === List("one")
@@ -113,7 +125,7 @@ class BaseHandlerTest extends Specification with CompleterHelper {
     }
 
     "handle contextual options - with string" in {
-      val cmdString = "mock o"
+      val cmdString = "mock on"
       val tokens = tokenize(cmdString) :+ Cursor
       println(tokens)
       contextualMockHandler.complete("", tokens, cmdString) === List("one")

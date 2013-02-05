@@ -39,12 +39,12 @@ class PushHandlerTest extends Specification {
 
     "complete repo correctly" in {
 
-      val out = handler.complete("o",
+      val out = handler.complete("on",
         List(
           LineToken("push"),
           Delim,
-          LineToken("o"),
-          Cursor), "push o")
+          LineToken("on"),
+          Cursor), "push on")
       out === List("one")
     }
 

@@ -85,6 +85,14 @@ package object handlers {
 
   abstract class BaseHandler extends CommandHandler {
 
+    /** Default input matching behaviour
+     * Matches the input string as an ordered sequence within the source string
+     */
+    protected def inputMatches(source:String, input:String) : Boolean = {
+      import scala.util.matching._
+      val regex : Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".*)", "all")
+      regex.findFirstIn(source).isDefined
+    }
 
     /** A completion helper that digs through the tokens calling the appropriate contextual function
       *
@@ -104,12 +112,13 @@ package object handlers {
         case _ => l.head(context)
       }
 
+
       @tailrec
       def completeRecursively(context: String, tokens: List[CompletionToken], options: List[(String => List[String])]): List[String] = {
         tokens match {
           case Cursor :: Nil => headOrNil(options, context)
-          case LineToken(s) :: Nil => headOrNil(options, context).filter(_.startsWith(s))
-          case LineToken(s) :: Cursor :: Nil => headOrNil(options, context).filter(_.startsWith(s))
+          case LineToken(s) :: Nil => headOrNil(options, context).filter(inputMatches(_,s))
+          case LineToken(s) :: Cursor :: Nil => headOrNil(options, context).filter(inputMatches(_,s))
           case LineToken(s) :: Delim :: rest => completeRecursively(s, rest, options.tail)
           case List() => List()
           case _ => List()
