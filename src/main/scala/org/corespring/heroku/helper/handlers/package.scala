@@ -72,7 +72,7 @@ package object handlers {
         case Some(app) => {
           appConverter(app) match {
             case Some(thing) => body(app, thing)
-            case _ => logger.info("can't find thing for app: " + name)
+            case _ => logger.info("HerokuHelper:: can't convert app to desired object: " + name )
           }
         }
         case _ => {
@@ -291,11 +291,17 @@ package object handlers {
                   logger.info(app.name + " is already up to date - not pushing")
                 } else {
                   val tmpFile = writeHerokuConfigToFile(app)
-                  config.push.before.foreach(script => logger.info(runScript(script, tmpFile + " " + app.name)))
+                  config.push.before.foreach(script => {
+                    logger.info("run: " + script)
+                    logger.info(runScript(script, tmpFile + " " + app.name))
+                  })
                   val finalCmd = config.push.prepareCommand(app.gitRemote, branch)
                   logger.info("running push: " + finalCmd)
                   logger.info(runScript(finalCmd))
-                  config.push.after.foreach(script => logger.info(runScript(script, tmpFile + " " + app.name)))
+                  config.push.after.foreach(script => {
+                    logger.info("run: " + script)
+                    logger.info(runScript(script, tmpFile + " " + app.name))
+                  })
                 }
             }
           }
