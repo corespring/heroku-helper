@@ -292,15 +292,16 @@ package object handlers {
                 } else {
                   val tmpFile = writeHerokuConfigToFile(app)
                   config.push.before.foreach(script => {
+                    println("[heroku-helper] run: " + script)
                     logger.info("run: " + script)
-                    logger.info(runScript(script, tmpFile + " " + app.name))
+                    logger.info(runScript(script, tmpFile + " " + app.name + " " + branch))
                   })
                   val finalCmd = config.push.prepareCommand(app.gitRemote, branch)
                   logger.info("running push: " + finalCmd)
                   logger.info(runScript(finalCmd))
                   config.push.after.foreach(script => {
                     logger.info("run: " + script)
-                    logger.info(runScript(script, tmpFile + " " + app.name))
+                    logger.info(runScript(script, tmpFile + " " + app.name + " " + branch))
                   })
                 }
             }

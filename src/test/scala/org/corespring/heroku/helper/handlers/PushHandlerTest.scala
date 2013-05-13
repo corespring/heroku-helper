@@ -90,11 +90,11 @@ class PushHandlerTest extends Specification {
 
       val handler = new PushHandler(mockApps, shellLog)
 
-      val expectedTemplate = """before 1 ${tmpFile} ${appName}
-                               |before 2 ${tmpFile} ${appName}
+      val expectedTemplate = """before 1 ${tmpFile} ${appName} master
+                               |before 2 ${tmpFile} ${appName} master
                                |git push heroku master:master
-                               |after 1 ${tmpFile} ${appName}
-                               |after 2 ${tmpFile} ${appName}
+                               |after 1 ${tmpFile} ${appName} master
+                               |after 2 ${tmpFile} ${appName} master
                                | """.stripMargin
 
       import org.corespring.heroku.helper.string.utils._
