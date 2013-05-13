@@ -19,32 +19,25 @@ class TypesafeEnvironmentVariablesLoader(file: String) extends EnvironmentVariab
 
   def load: List[EnvironmentVariables] = {
 
-    try {
-      import collection.JavaConverters._
-      val config: TConfig = loadTypesafeConfig(file)
-      val rawEnvironments : java.util.List[_] = config.getConfigList("environments")
-      val list = rawEnvironments.asScala.toList.map(_.asInstanceOf[TConfig])
-      list.map(toEnvironmentVariables)
-    }
-    catch {
-      case e : Throwable => {
-        logger.error(e.getMessage)
-        List()
-      }
-    }
+    import collection.JavaConverters._
+    val config: TConfig = loadTypesafeConfig(file)
+    val rawEnvironments: java.util.List[_] = config.getConfigList("environments")
+    val list = rawEnvironments.asScala.toList.map(_.asInstanceOf[TConfig])
+    list.map(toEnvironmentVariables)
   }
 
   private def toEnvironmentVariables(config: TConfig) = {
-     EnvironmentVariables(
-       herokuName = config.getString("name"),
-       vars = loadWithDefault( () => config.getConfig("vars"), toMap, Map())
-     )
+    EnvironmentVariables(
+      herokuName = config.getString("name"),
+      vars = loadWithDefault(() => config.getConfig("vars"), toMap, Map())
+    )
   }
 
-  private def toMap(config: TConfig) : Map[String,String] = {
+  private def toMap(config: TConfig): Map[String, String] = {
     import collection.JavaConverters._
-    val set : List[(String,String)] = config.entrySet().asScala.toList.map{ e:java.util.Map.Entry[String,ConfigValue] =>
-      (e.getKey, e.getValue.unwrapped.toString)
+    val set: List[(String, String)] = config.entrySet().asScala.toList.map {
+      e: java.util.Map.Entry[String, ConfigValue] =>
+        (e.getKey, e.getValue.unwrapped.toString)
     }
     set.toMap
   }

@@ -1,12 +1,12 @@
 package org.corespring.heroku.helper
 
-import grizzled.cmd._
 import org.corespring.heroku.helper.handlers._
-import log.{logger, Debug}
+import log.logger
 import models._
-import java.io.File
 import shell.{CmdResult, Shell, Git}
 import scala.Some
+import grizzled.cmd._
+import com.typesafe.config.ConfigFactory
 
 
 object CLI extends App {
@@ -20,8 +20,10 @@ object CLI extends App {
     string.utils.interpolate(raw, ("version", Version.version.toString))
   }
 
+  val config : com.typesafe.config.Config = ConfigFactory.load()
   val LocalConfigFile = ".heroku-helper.conf"
-  val LocalEnvironmentVariablesFile = ".heroku-helper-env.conf"
+  val LocalEnvironmentVariablesFile = config.getString("envConfFile")
+
 
   val apiKey: String = netrc.apiKey(netrc.DefaultPath) match {
     case Some(key) => key
