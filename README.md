@@ -10,7 +10,7 @@ A utility to allow you to run scripts as part of a heroku push/rollback
 
 When the helper is launched it looks for 2 files to load from the same folder that you just launched it in:
 * .heroku-helper.conf
-* .heroku-helper-env.conf
+* .heroku-helper-env.conf - (You can also specify: HEROKU_HELPER_ENV_CONF env var to point to another env .conf file)
 
 ## Available commands:
 * help - display help
