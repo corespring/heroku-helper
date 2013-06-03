@@ -88,5 +88,16 @@ We use sbt 12.x
 
     sbt test one-jar
 
+### Release Notes
+
+#### 0.2
+- When pushing env vars are automatically set (like calling `set-env-vars` then `push`).
+- When setting env vars - remove all the current vars before setting.
+- Allow configuration of 'reserved env vars' in .heroku-helper.conf: `reservedEnvVars`. These vars won't be deleted
+but can be overwritten.
+
+#### 0.1
+- Initial version
+
 
 
