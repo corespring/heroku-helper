@@ -21,6 +21,7 @@ When the helper is launched it looks for 2 files to load from the same folder th
 * releases {heroku-app-name} - list the releases for the given heroku app name
 * set-env-vars {heroku-app-name} - using the configuration information in .heroku-helper-env.conf apply the variables to the given heroku app (equivalent of calling `heroku config:set A="A"`)
 * folder-info - information about the current directory (path + short commit hash)
+* dry-run {true|false} - if set to true the shell commands won't execute - they'll only be logged to the console (note: only affects push, once set can't be changed, must be set first).
 
 ## .heroku-helper.conf
 This file defines scripts that should be run for a specific heroku app.
