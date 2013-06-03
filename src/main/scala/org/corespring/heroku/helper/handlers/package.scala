@@ -1,15 +1,15 @@
 package org.corespring.heroku.helper
 
-import grizzled.cmd.{Stop, KeepGoing, CommandAction, CommandHandler}
-import org.corespring.heroku.helper.models._
-import org.corespring.heroku.rest.models.Release
-import shell.{CmdResult, Git, Shell}
-import org.corespring.heroku.helper.log.logger
-import grizzled.readline._
-import scala.Some
-import grizzled.readline.LineToken
 import annotation.tailrec
 import com.codahale.jerkson.Json
+import grizzled.cmd.{Stop, KeepGoing, CommandAction, CommandHandler}
+import grizzled.readline._
+import org.corespring.heroku.helper.log.logger
+import org.corespring.heroku.helper.models._
+import org.corespring.heroku.rest.models.Release
+import scala.Some
+import shell.{CmdResult, Git, Shell}
+import org.corespring.heroku.helper.CLI.RuntimeOptions
 
 package object handlers {
 
@@ -50,9 +50,6 @@ package object handlers {
       else {
         shell.run(script + " " + params, out, err)
       }
-
-      logger.debug(result.name + " code: " + result.exitCode)
-
       if (result.exitCode != 0) {
         throw new RuntimeException("Error running cmd: " + result.name)
       }
@@ -72,7 +69,7 @@ package object handlers {
         case Some(app) => {
           appConverter(app) match {
             case Some(thing) => body(app, thing)
-            case _ => logger.info("HerokuHelper:: can't convert app to desired object: " + name )
+            case _ => logger.info("HerokuHelper:: can't convert app to desired object: " + name)
           }
         }
         case _ => {
@@ -86,11 +83,11 @@ package object handlers {
   abstract class BaseHandler extends CommandHandler {
 
     /** Default input matching behaviour
-     * Matches the input string as an ordered sequence within the source string
-     */
-    protected def inputMatches(source:String, input:String) : Boolean = {
+      * Matches the input string as an ordered sequence within the source string
+      */
+    protected def inputMatches(source: String, input: String): Boolean = {
       import scala.util.matching._
-      val regex : Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".*)", "all")
+val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".*)", "all")
       regex.findFirstIn(source).isDefined
     }
 
@@ -117,8 +114,8 @@ package object handlers {
       def completeRecursively(context: String, tokens: List[CompletionToken], options: List[(String => List[String])]): List[String] = {
         tokens match {
           case Cursor :: Nil => headOrNil(options, context)
-          case LineToken(s) :: Nil => headOrNil(options, context).filter(inputMatches(_,s))
-          case LineToken(s) :: Cursor :: Nil => headOrNil(options, context).filter(inputMatches(_,s))
+          case LineToken(s) :: Nil => headOrNil(options, context).filter(inputMatches(_, s))
+          case LineToken(s) :: Cursor :: Nil => headOrNil(options, context).filter(inputMatches(_, s))
           case LineToken(s) :: Delim :: rest => completeRecursively(s, rest, options.tail)
           case List() => List()
           case _ => List()
@@ -143,11 +140,20 @@ package object handlers {
       val asContextFunctions = options.map(o => ((s: String) => o))
       completeContextually(token, allTokens, line, asContextFunctions: _*)
     }
-
-
   }
 
 
+
+  class DryRunHandler extends CommandHandler{
+    val CommandName = "dry-run"
+    val Help = "Toggle dry run"
+
+    def runCommand(command:String, args : String) : CommandAction = {
+      RuntimeOptions.dryRun = args.startsWith("true")
+      logger.info("dry run: " + RuntimeOptions.dryRun)
+      KeepGoing
+    }
+  }
   /** Handler the "about" command
     */
   class AboutHandler extends CommandHandler {
@@ -238,14 +244,15 @@ package object handlers {
   }
 
 
-  class PushHandler(appsService: AppsService, shell: Shell)
+  class PushHandler(appsService: AppsService, shellLoader: => Shell, envVars: List[EnvironmentVariables])
     extends BaseHandler
     with ShellRunning
-    with AppsHelper {
+    with AppsHelper
+    with EnvVarSetting {
     val CommandName = "push"
     val Help = "push this git repository to a heroku remote repository"
 
-    def shell() = shell
+    lazy val shell : Shell = shellLoader
 
     def service() = appsService
 
@@ -261,19 +268,30 @@ package object handlers {
     def configFilename(app: HerokuApp): String = ".heroku-helper-tmp-" + app.name + ".json"
 
     def writeHerokuConfigToFile(app: HerokuApp): String = {
-      val herokuConfig = appsService.loadHerokuConfigFor(app)
-      logger.debug("herokuConfig:")
-      logger.debug(herokuConfig.toString)
-
+      val herokuConfig = appsService.loadHerokuConfigVars(app)
+      val json = Json.generate(herokuConfig)
+      if(RuntimeOptions.dryRun){
+        logger.info(json)
+      }
       val tmpDataFile = configFilename(app)
-      org.corespring.file.utils.write(tmpDataFile, Json.generate(herokuConfig))
+      org.corespring.file.utils.write(tmpDataFile, json)
       tmpDataFile
+    }
+
+    def envVarsToClear(app: HerokuApp): List[String] = {
+      def isReserved(key: String): Boolean = {
+        appsService.reservedEnvVars.exists(key.startsWith(_))
+      }
+
+      val currentConfigVars = appsService.loadHerokuConfigVars(app)
+      currentConfigVars.toList.map(_._1).filterNot(isReserved)
     }
 
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
 
+        println("args: " + args)
         def isCurrentRelease(app: HerokuApp): Boolean = {
           val currentRelease: Release = appsService.currentRelease(app)
           logger.debug("current release: " + currentRelease)
@@ -283,13 +301,16 @@ package object handlers {
 
         args.split(" ").toList match {
           case List(appName, branch) => {
-
             withApp(appName, (app) => appsService.loadConfigFor(app)) {
-              (app: HerokuApp, config: HerokuAppConfig) =>
+              (app: HerokuApp, config: HelperAppConfig) =>
 
                 if (isCurrentRelease(app)) {
                   logger.info(app.name + " is already up to date - not pushing")
                 } else {
+
+                  clearEnvVars(app.name, envVarsToClear(app))
+                  setEnvVarsForApp(app.name, envVars)
+
                   val tmpFile = writeHerokuConfigToFile(app)
                   config.push.before.foreach(script => {
                     println("[heroku-helper] run: " + script)
@@ -334,7 +355,7 @@ package object handlers {
 
           withApp(appName, (app) => appsService.loadConfigFor(app)) {
 
-            (app: HerokuApp, config: HerokuAppConfig) =>
+            (app: HerokuApp, config: HelperAppConfig) =>
 
               for {
                 release <- appsService.releases(app).find(_.name == version)
@@ -390,33 +411,19 @@ package object handlers {
     }
   }
 
+
   class SetEnvironmentVariablesHandler(appsService: AppsService, environmentVariables: List[EnvironmentVariables], shell: Shell)
-    extends BaseHandler with ShellRunning {
+    extends BaseHandler with ShellRunning
+    with EnvVarSetting {
     val CommandName = "set-env-vars"
-    val Help = "set env vars based on what it is configured in .heroku-helper-env.conf"
+    val Help = "set env vars based on what it is configured in .heroku-helper-env.conf (note: always happens when you do a push)"
 
     def shell() = shell
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
-
-        def runConfigSet(ev: EnvironmentVariables) {
-          val cmd: String =
-            "heroku config:set " +
-              ev.vars.map((kv: (String, String)) => kv._1 + "=" + kv._2).mkString(" ") +
-              " --app " + ev.herokuName
-
-          logger.debug("running: " + cmd)
-          shell.run(cmd, out, err)
-        }
-
         args.split(" ").toList match {
-          case List(appName) => {
-            environmentVariables.find(_.herokuName == appName) match {
-              case Some(ev) => runConfigSet(ev)
-              case _ => logger.info("can't find environment variables for: " + appName)
-            }
-          }
+          case List(appName) => setEnvVarsForApp(appName, environmentVariables)
           case _ => logger.info("try again - you need to specify an app name")
         }
     }
@@ -424,9 +431,37 @@ package object handlers {
 
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
       val appNames = appsService.apps.map(_.name)
-      completeFromOptions(token,allTokens,line,appNames)
+      completeFromOptions(token, allTokens, line, appNames)
     }
   }
 
+
+  trait EnvVarSetting {
+    self: ShellRunning =>
+
+    def clearEnvVars(appName: String, vars: List[String]) {
+      if (vars.length > 0) {
+        val cmd = "heroku config:remove " + vars.mkString(" ") + " --app " + appName
+        shell.run(cmd, out, err)
+      }
+    }
+
+    def setEnvVarsForApp(appName: String, envVars: List[EnvironmentVariables]) {
+      envVars.find(_.herokuName == appName) match {
+        case Some(ev) => {
+          logger.debug("Setting env vars for app: " + appName + " vars: \n" + envVars.mkString("\n"))
+          runConfigSet(ev)
+        }
+        case _ => logger.info("can't find environment variables for: " + appName)
+      }
+    }
+
+    private def runConfigSet(ev: EnvironmentVariables) {
+      def toCmd(kv: (String, String)): String = kv._1 + "=" + kv._2
+      val cmd: String = "heroku config:set " + ev.vars.map(toCmd).mkString(" ") + " --app " + ev.herokuName
+      logger.debug("running: " + cmd)
+      shell.run(cmd, out, err)
+    }
+  }
 
 }

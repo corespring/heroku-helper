@@ -15,7 +15,7 @@ class GitTest extends Specification {
                         |origin git@github.com:corespring/heroku-helper-example-app.git (fetch)
                         |origin git@github.com:corespring/heroku-helper-example-app.git (push)""".stripMargin
 
-      new Git(new MockShell(oneRemote)).repos === List(("heroku", "heroku-helper-example-app"))
+      new Git(new LoggingShell(oneRemote)).repos === List(("heroku", "heroku-helper-example-app"))
 
       val twoRemotes = """heroku git@heroku.com:heroku-helper-example-app.git (fetch)
                          |other-app git@heroku.com:my-other-app.git (fetch)
@@ -23,7 +23,7 @@ class GitTest extends Specification {
                          |origin git@github.com:corespring/heroku-helper-example-app.git (fetch)
                          |origin git@github.com:corespring/heroku-helper-example-app.git (push)""".stripMargin
 
-      new Git(new MockShell(twoRemotes)).repos === List(
+      new Git(new LoggingShell(twoRemotes)).repos === List(
         ("heroku", "heroku-helper-example-app"),
         ("other-app", "my-other-app")
       )
@@ -34,7 +34,7 @@ class GitTest extends Specification {
       val master = """* master
                      |  new_b""".stripMargin
 
-      new Git(new MockShell(master)).branches === List("master", "new_b")
+      new Git(new LoggingShell(master)).branches === List("master", "new_b")
 
     }
   }

@@ -1,6 +1,5 @@
 package org.corespring.heroku.helper.shell
 
-import sys.process.ProcessLogger
 import scala.sys.process._
 
 /** Shell behaviour */

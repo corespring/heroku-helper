@@ -1,23 +1,21 @@
 package org.corespring.heroku.helper.models
 
-import com.typesafe.config.{ConfigObject, ConfigList}
 import exceptions.InvalidConfigException
+import typesafe.TypesafeLoader
 
 trait ConfigLoader {
   @throws(classOf[InvalidConfigException])
-  def load: Config
+  def load: HelperConfig
 
-  def save(config: Config)
+  def save(config: HelperConfig)
 }
 
-import typesafe.TypesafeLoader
 
 class TypesafeConfigConfigLoader(path: String) extends ConfigLoader with TypesafeLoader {
 
-  import com.typesafe.config.{ConfigParseOptions, ConfigResolveOptions, ConfigFactory}
   import com.typesafe.config.{Config => TConfig}
 
-  def load: Config = {
+  def load: HelperConfig = {
 
     try {
 
@@ -26,16 +24,16 @@ class TypesafeConfigConfigLoader(path: String) extends ConfigLoader with Typesaf
       val typesafeConfig: TConfig = loadTypesafeConfig(path)
       val appTConfigs: java.util.List[_] = typesafeConfig.getConfigList("appConfigs")
       val list = appTConfigs.asScala.toList.map(_.asInstanceOf[TConfig])
-      val appConfigs: List[HerokuAppConfig] = list.map(toHerokuAppConfig)
-      val startupValidation = loadWithDefault((()=>typesafeConfig.getString("startupValidation")), toSome[String], None )
-      new Config(startupValidation, appConfigs)
-
+      val appConfigs: List[HelperAppConfig] = list.map(toHerokuAppConfig)
+      val startupValidation = loadWithDefault((() => typesafeConfig.getString("startupValidation")), toSome[String], None)
+      val reservedEnvVars = loadWithDefault(() => typesafeConfig.getStringList("reservedEnvVars"), toScalaList[String], List())
+      HelperConfig(startupValidation, appConfigs, reservedEnvVars)
     } catch {
       case e: Throwable => throw new InvalidConfigException(e.getMessage)
     }
   }
 
-  private def toHerokuAppConfig(typesafeConfig: TConfig): HerokuAppConfig = {
+  private def toHerokuAppConfig(typesafeConfig: TConfig): HelperAppConfig = {
     import collection.JavaConverters._
 
 
@@ -59,14 +57,14 @@ class TypesafeConfigConfigLoader(path: String) extends ConfigLoader with Typesaf
       )
     }
 
-    new HerokuAppConfig(
+    new HelperAppConfig(
       name = typesafeConfig.getString("name"),
       push = loadWithDefault(() => typesafeConfig.getConfig("push"), toPush, new Push),
       rollback = loadWithDefault(() => typesafeConfig.getConfig("rollback"), toRollback, new Rollback)
     )
   }
 
-  def save(config: Config) {
+  def save(config: HelperConfig) {
     throw new RuntimeException("Save not supported")
   }
 }

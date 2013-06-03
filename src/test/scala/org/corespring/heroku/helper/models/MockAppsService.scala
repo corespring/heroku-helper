@@ -3,24 +3,26 @@ package org.corespring.heroku.helper.models
 import org.corespring.heroku.rest.models.Release
 
 
-class MockAppsService(apps: List[HerokuApp] = List(),
-                      config: Option[HerokuAppConfig] = None,
-                      release: Release = new Release(),
-                      branches: List[String] = List(),
-                      releases: List[Release] = List()
-                       ) extends AppsService {
-  def apps(): List[HerokuApp] = apps
+class MockAppsService(
+                       val apps: List[HerokuApp] = List(),
+                       val branches: List[String] = List(),
+                       val reservedEnvVars: List[String] = List(),
+                       config: Option[HelperAppConfig] = None,
+                       release: Release = new Release(),
+                       releases: List[Release] = List(),
+                       herokuConfigVars: Map[String, String] = Map()
+                       )
+  extends AppsService {
 
-  def loadConfigFor(app: HerokuApp): Option[HerokuAppConfig] = config
+  def loadConfigFor(app: HerokuApp): Option[HelperAppConfig] = config
 
   def currentRelease(app: HerokuApp): Release = release
-
-  def branches(): List[String] = branches
 
   def releases(app: HerokuApp): List[Release] = releases
 
   def shortCommitHash = "XXXX"
 
-  def loadHerokuConfigFor(app: HerokuApp): Map[String, String] = Map()
+  def loadHerokuConfigVars(app: HerokuApp): Map[String, String] = herokuConfigVars
+
 }
 

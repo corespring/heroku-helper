@@ -1,33 +1,19 @@
 package org.corespring.heroku.helper.handlers
 
-import org.specs2.mutable.{After, Specification}
-import grizzled.readline.{Cursor, Delim, LineToken, CompletionToken}
-import org.corespring.heroku.helper.shell.git.GitInfo
-import org.corespring.heroku.helper.shell.{MockShell, CmdResult, Shell}
-import org.corespring.heroku.helper.models._
-import org.corespring.heroku.helper.models.HerokuAppConfig
-import org.corespring.heroku.helper.models.Config
-import org.corespring.heroku.helper.models.Push
 import grizzled.readline.LineToken
-import org.corespring.heroku.rest.models.Release
+import grizzled.readline.{Cursor, Delim}
+import org.corespring.heroku.helper.models._
+import org.corespring.heroku.helper.shell.LoggingShell
+import org.corespring.heroku.helper.shell.git.GitInfo
 import org.corespring.heroku.helper.testUtils.RemoveFileAfter
+import org.specs2.mutable.Specification
 
 class PushHandlerTest extends Specification {
 
   "PushHandler" should {
 
-    class MockGitInfo(repos: List[(String, String)] = List(), branches: List[String] = List()) extends GitInfo {
-      def repos(): List[(String, String)] = repos
-
-      def branches(): List[String] = branches
-
+    class MockGitInfo(val repos: List[(String, String)] = List(), val branches: List[String] = List()) extends GitInfo {
       def shortCommitHash: String = "XXXX"
-    }
-
-    class MockConfigLoader(config: Config = new Config) extends ConfigLoader {
-      def load(): Config = config
-
-      def save(config: Config) {}
     }
 
     val mockApps = new MockAppsService(
@@ -35,7 +21,7 @@ class PushHandlerTest extends Specification {
       branches = List("branch_one", "branch_two")
     )
 
-    val handler = new PushHandler(mockApps, new MockShell(""))
+    val handler = new PushHandler(mockApps, new LoggingShell(""), List())
 
     "complete repo correctly" in {
 
@@ -73,9 +59,9 @@ class PushHandlerTest extends Specification {
 
       def filesToDeleteAfter: List[String] = List(".heroku-helper-tmp-my-cool-heroku-app.json")
 
-      val shellLog = new MockShell
+      val shellLog = new LoggingShell
 
-      val mockConfig = new HerokuAppConfig(name = "my-cool-heroku-app",
+      val mockConfig = new HelperAppConfig(name = "my-cool-heroku-app",
         push = new Push(
           before = Seq("before 1", "before 2"),
           after = Seq("after 1", "after 2"))
@@ -88,8 +74,6 @@ class PushHandlerTest extends Specification {
         apps = List(mockApp),
         branches = List("master"))
 
-      val handler = new PushHandler(mockApps, shellLog)
-
       val expectedTemplate = """before 1 ${tmpFile} ${appName} master
                                |before 2 ${tmpFile} ${appName} master
                                |git push heroku master:master
@@ -99,11 +83,40 @@ class PushHandlerTest extends Specification {
 
       import org.corespring.heroku.helper.string.utils._
 
-      val expected = interpolate(expectedTemplate,
-        ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
+      val handler = new PushHandler(mockApps, shellLog, List())
+      val expected = interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
       handler.runCommand("push", "my-cool-heroku-app master")
       shellLog.cmds.mkString("\n") === expected.trim
+
+      shellLog.cmds = List()
+      val handler2 = new PushHandler(mockApps, shellLog, List(EnvironmentVariables("my-cool-heroku-app", Map("A" -> "apple"))))
+      val expected2 = "heroku config:set A=apple --app my-cool-heroku-app\n" + interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
+      handler2.runCommand("push", "my-cool-heroku-app master")
+      val out = shellLog.cmds.mkString("\n")
+      out === expected2.trim
     }
+
+    "unset env vars" in new RemoveFileAfter{
+
+      val app = "my-app"
+      def filesToDeleteAfter: List[String] = List(".heroku-helper-tmp-" + app + ".json")
+      val shellLog = new LoggingShell
+      val mockConfig = new HelperAppConfig(name = app)
+      val mockApp = HerokuApp(gitRemote = app + "-heroku", name = app)
+      val mockApps = new MockAppsService(
+        config = Some(mockConfig),
+        apps = List(mockApp),
+        branches = List("master"),
+        herokuConfigVars = Map("A_KEY_TO_REMOVE" -> "value", "RESERVED_KEY" -> "value"),
+        reservedEnvVars = List("RESERVED_"))
+      val handler = new PushHandler(mockApps, shellLog, List(EnvironmentVariables(app, Map("A" -> "apple"))))
+      handler.runCommand("push", app + " master")
+      shellLog.cmds.mkString("\n") ===
+        """heroku config:remove A_KEY_TO_REMOVE --app my-app
+          |heroku config:set A=apple --app my-app
+          |git push my-app-heroku master:master""".stripMargin
+    }
+
   }
 
 }

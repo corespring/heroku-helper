@@ -5,7 +5,7 @@ import Keys._
 object Build extends sbt.Build {
 
   val name = "heroku-helper"
-  val appVersion = "0.1"
+  val appVersion = "0.2-SNAPSHOT"
 
   def buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.corespring",

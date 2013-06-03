@@ -21,7 +21,7 @@ object PrettyPrint {
   }
 
 
-  def config(c: HerokuAppConfig): String = {
+  def config(c: HelperAppConfig): String = {
     val template = """
                      |push:
                      |  cmd: ${pushCmd}

@@ -30,5 +30,10 @@ trait TypesafeLoader {
 
   protected def toSome[A](thing:A):Option[A] = Some(thing)
 
+  protected def toScalaList[A](javaList:java.util.List[A]) : List[A] = {
+    import scala.collection.JavaConversions._
+    javaList.toList
+  }
+
 
 }

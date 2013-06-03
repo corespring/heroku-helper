@@ -1,12 +1,12 @@
 package org.corespring.heroku.helper
 
-import org.corespring.heroku.helper.handlers._
+import com.typesafe.config.ConfigFactory
+import grizzled.cmd._
 import log.logger
 import models._
-import shell.{CmdResult, Shell, Git}
+import org.corespring.heroku.helper.handlers._
+import org.corespring.heroku.helper.shell.{LoggingShell, CmdResult, Shell, Git}
 import scala.Some
-import grizzled.cmd._
-import com.typesafe.config.ConfigFactory
 
 
 object CLI extends App {
@@ -20,7 +20,7 @@ object CLI extends App {
     string.utils.interpolate(raw, ("version", Version.version.toString))
   }
 
-  val config : com.typesafe.config.Config = ConfigFactory.load()
+  val config: com.typesafe.config.Config = ConfigFactory.load()
   val LocalConfigFile = ".heroku-helper.conf"
   val LocalEnvironmentVariablesFile = config.getString("envConfFile")
 
@@ -30,19 +30,30 @@ object CLI extends App {
     case None => throw new RuntimeException("No api key found")
   }
 
-  val configLoader: ConfigLoader = new TypesafeConfigConfigLoader(LocalConfigFile)
+  val helperConfig: HelperConfig = new TypesafeConfigConfigLoader(LocalConfigFile).load
 
-  val environmentVariables: List[EnvironmentVariables] = new TypesafeEnvironmentVariablesLoader(LocalEnvironmentVariablesFile).load
+  val environmentVariables: List[EnvironmentVariables] = try {
+    new TypesafeEnvironmentVariablesLoader(LocalEnvironmentVariablesFile).load
+  } catch {
+    case e: Throwable => List()
+  }
 
-  val appsService: AppsService = new AppsServiceImpl(apiKey, Git, configLoader)
+  val appsService: AppsService = new AppsServiceImpl(apiKey, Git, helperConfig)
+
+  object RuntimeOptions {
+    var dryRun: Boolean = false
+  }
+
+  def getShell: Shell = if (RuntimeOptions.dryRun) new LoggingShell else Shell
 
   val handlers: List[CommandHandler] = List(
     new AboutHandler,
+    new DryRunHandler,
     new ExitHandler,
     new ViewAppsHandler,
     new InfoHandler(appsService),
     new ViewReleasesHandler(appsService),
-    new PushHandler(appsService, Shell),
+    new PushHandler(appsService, getShell, environmentVariables),
     new RollbackHandler(appsService, Shell),
     new SetEnvironmentVariablesHandler(appsService, environmentVariables, Shell),
     new FolderInfoHandler)
@@ -58,20 +69,12 @@ object CLI extends App {
   }
 
   /** Launch the interactive console
-    *
     */
   private def launchConsole {
 
-    def logApiKeyError = {
-      logger.info(Header)
-      logger.error("No api key found - have you logged in with the heroku toolbelt yet?")
-    }
-
-    def logInvalidEnvironment(validationScript: String) = logger.error("The validation script failed: " + validationScript)
-
     logger.info(Header)
 
-    val validationResult: CmdResult = configLoader.load.startupValidation match {
+    val validationResult: CmdResult = helperConfig.startupValidation match {
       case Some(validationScript) => {
         Shell.run(validationScript,
           (s: String) => logger.info(s),

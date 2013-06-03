@@ -19,20 +19,22 @@ trait AppsService {
    * @param app
    * @return
    */
-  def loadConfigFor(app: HerokuApp): Option[HerokuAppConfig]
+  def loadConfigFor(app: HerokuApp): Option[HelperAppConfig]
 
   /** @return - a list of branches for this git repo
     */
   def branches: List[String]
 
-  def loadHerokuConfigFor(app:HerokuApp) : Map[String,String]
+  def loadHerokuConfigVars(app:HerokuApp) : Map[String,String]
 
   /** The local git repos short commit hash*/
   def shortCommitHash : String
 
+  def reservedEnvVars : List[String]
+
 }
 
-class AppsServiceImpl(apiKey: String, git: GitInfo, configLoader: ConfigLoader) extends AppsService {
+class AppsServiceImpl(apiKey: String, git: GitInfo, config: HelperConfig) extends AppsService {
 
   private val appToReleaseMap: HashMap[HerokuApp, List[Release]] = new HashMap[HerokuApp, List[Release]]()
 
@@ -70,11 +72,13 @@ class AppsServiceImpl(apiKey: String, git: GitInfo, configLoader: ConfigLoader) 
 
   }
 
-  def loadConfigFor(app: HerokuApp): Option[HerokuAppConfig] = configLoader.load.appConfigByName(app.name)
+  def loadConfigFor(app: HerokuApp): Option[HelperAppConfig] = config.appConfigByName(app.name)
+
+  def reservedEnvVars = config.reservedEnvVars
 
   def branches : List[String] = git.branches
 
-  def loadHerokuConfigFor(app:HerokuApp) : Map[String,String] = {
+  def loadHerokuConfigVars(app:HerokuApp) : Map[String,String] = {
     HerokuRestClient.Config.config(apiKey,app.name) match {
       case Right(map) => map
       case Left(error) => Map()

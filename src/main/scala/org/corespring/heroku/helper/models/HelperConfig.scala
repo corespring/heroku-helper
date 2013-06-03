@@ -1,21 +1,40 @@
 package org.corespring.heroku.helper.models
 
 
-case class Config(startupValidation:Option[String] = None, appConfigs: Seq[HerokuAppConfig] = Seq()) {
+/**
+ * @param startupValidation - a script to run before running the helper to validate the environment
+ * @param appConfigs - helper app configs
+ * @param reservedEnvVars - a set of env vars that are reserved - they can be set but not deleted.
+ */
+class HelperConfig(val startupValidation: Option[String] = None, val appConfigs: Seq[HelperAppConfig] = Seq(), val reservedEnvVars: List[String] = List()) {
+  def appConfigByName(name: String): Option[HelperAppConfig] = appConfigs.find(_.name == name)
+}
 
-  def appConfigByName(name: String): Option[HerokuAppConfig] = appConfigs.find(_.name == name)
+object HelperConfig {
+  val reserved: List[String] = List(
+    "HEROKU_",
+    "PATH",
+    "JAVA_",
+    "DATABASE_",
+    "SBT_OPTS",
+    "REPO",
+    "BUILDPACK"
+  )
 
+  def apply(startupValidation: Option[String] = None, appConfigs: Seq[HelperAppConfig] = Seq(), reservedEnvVars: List[String] = List()): HelperConfig = {
+    new HelperConfig(startupValidation, appConfigs, reserved ++ reservedEnvVars)
+  }
 }
 
 
-case class HerokuAppConfig(name: String,
+case class HelperAppConfig(name: String,
                            push: Push = new Push,
                            rollback: Rollback = new Rollback)
 
 
 abstract class Action(before: Seq[String] = List(),
                       after: Seq[String] = List(),
-                      cmd: String )
+                      cmd: String)
 
 
 case class Push(before: Seq[String] = Seq(),

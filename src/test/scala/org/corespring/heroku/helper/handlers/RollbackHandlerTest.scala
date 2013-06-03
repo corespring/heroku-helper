@@ -1,9 +1,9 @@
 package org.corespring.heroku.helper.handlers
 
 import org.specs2.mutable.Specification
-import org.corespring.heroku.helper.models.{Rollback, HerokuAppConfig, MockAppsService, HerokuApp}
+import org.corespring.heroku.helper.models.{Rollback, HelperAppConfig, MockAppsService, HerokuApp}
 import org.corespring.heroku.rest.models.{Release}
-import org.corespring.heroku.helper.shell.MockShell
+import org.corespring.heroku.helper.shell.LoggingShell
 import org.corespring.heroku.helper.testUtils.RemoveFileAfter
 
 class RollbackHandlerTest extends Specification {
@@ -18,7 +18,7 @@ class RollbackHandlerTest extends Specification {
           HerokuApp(name = "my-app", gitRemote = "my-app-git-remote")
         ),
         config = Some(
-          HerokuAppConfig(
+          HelperAppConfig(
             name = "my-app",
             rollback = new Rollback(
               before = Seq("before.1.sh", "before.2.sh"),
@@ -30,7 +30,7 @@ class RollbackHandlerTest extends Specification {
           Release(name = "v1", commit = "commit_hash")
         )
       )
-      val mockShell = new MockShell()
+      val mockShell = new LoggingShell()
 
 
       val handler = new RollbackHandler(mockService, mockShell)

@@ -2,7 +2,7 @@ package org.corespring.heroku.helper.handlers
 
 import org.specs2.mutable.Specification
 import org.corespring.heroku.helper.models.{HerokuApp, MockAppsService, EnvironmentVariables}
-import org.corespring.heroku.helper.shell.MockShell
+import org.corespring.heroku.helper.shell.LoggingShell
 
 class SetEnvironmentVariablesHandlerTest extends Specification {
 
@@ -18,7 +18,7 @@ class SetEnvironmentVariablesHandlerTest extends Specification {
       val mockVars = List(
         new EnvironmentVariables(herokuName = "my-app", vars = Map(("one" -> "1")))
       )
-      val mockShell = new MockShell()
+      val mockShell = new LoggingShell()
       val handler = new SetEnvironmentVariablesHandler(mockAppService, mockVars, mockShell)
 
       handler.runCommand("set-env-vars", "my-app")
