@@ -21,7 +21,7 @@ class PushHandlerTest extends Specification {
       branches = List("branch_one", "branch_two")
     )
 
-    val handler = new PushHandler(mockApps, new LoggingShell(""), List())
+    val handler = new PushHandler(mockApps, new LoggingShell(""), List(), false)
 
     "complete repo correctly" in {
 
@@ -83,13 +83,13 @@ class PushHandlerTest extends Specification {
 
       import org.corespring.heroku.helper.string.utils._
 
-      val handler = new PushHandler(mockApps, shellLog, List())
+      val handler = new PushHandler(mockApps, shellLog, List(), false)
       val expected = interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
       handler.runCommand("push", "my-cool-heroku-app master")
       shellLog.cmds.mkString("\n") === expected.trim
 
       shellLog.cmds = List()
-      val handler2 = new PushHandler(mockApps, shellLog, List(EnvironmentVariables("my-cool-heroku-app", Map("A" -> "apple"))))
+      val handler2 = new PushHandler(mockApps, shellLog, List(EnvironmentVariables("my-cool-heroku-app", Map("A" -> "apple"))), true)
       val expected2 = "heroku config:set A=apple --app my-cool-heroku-app\n" + interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
       handler2.runCommand("push", "my-cool-heroku-app master")
       val out = shellLog.cmds.mkString("\n")
@@ -109,7 +109,7 @@ class PushHandlerTest extends Specification {
         branches = List("master"),
         herokuConfigVars = Map("A_KEY_TO_REMOVE" -> "value", "RESERVED_KEY" -> "value"),
         reservedEnvVars = List("RESERVED_"))
-      val handler = new PushHandler(mockApps, shellLog, List(EnvironmentVariables(app, Map("A" -> "apple"))))
+      val handler = new PushHandler(mockApps, shellLog, List(EnvironmentVariables(app, Map("A" -> "apple"))), true)
       handler.runCommand("push", app + " master")
       shellLog.cmds.mkString("\n") ===
         """heroku config:remove A_KEY_TO_REMOVE --app my-app
