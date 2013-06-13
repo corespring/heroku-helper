@@ -32,6 +32,8 @@ object CLI extends App {
 
   val helperConfig: HelperConfig = new TypesafeConfigConfigLoader(LocalConfigFile).load
 
+  logger.level = helperConfig.logLevel
+
   val environmentVariables: List[EnvironmentVariables] = try {
     new TypesafeEnvironmentVariablesLoader(LocalEnvironmentVariablesFile).load
   } catch {
@@ -53,7 +55,7 @@ object CLI extends App {
     new ViewAppsHandler,
     new InfoHandler(appsService),
     new ViewReleasesHandler(appsService),
-    new PushHandler(appsService, getShell, environmentVariables),
+    new PushHandler(appsService, getShell, environmentVariables, helperConfig.resetEnvVars),
     new RollbackHandler(appsService, Shell),
     new SetEnvironmentVariablesHandler(appsService, environmentVariables, Shell),
     new FolderInfoHandler)
@@ -73,6 +75,7 @@ object CLI extends App {
   private def launchConsole {
 
     logger.info(Header)
+
 
     val validationResult: CmdResult = helperConfig.startupValidation match {
       case Some(validationScript) => {

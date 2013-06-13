@@ -6,7 +6,7 @@ package org.corespring.heroku.helper.models
  * @param appConfigs - helper app configs
  * @param reservedEnvVars - a set of env vars that are reserved - they can be set but not deleted.
  */
-class HelperConfig(val startupValidation: Option[String] = None, val appConfigs: Seq[HelperAppConfig] = Seq(), val reservedEnvVars: List[String] = List()) {
+class HelperConfig(val startupValidation: Option[String] = None,  val appConfigs: Seq[HelperAppConfig] = Seq(), val reservedEnvVars: List[String] = List(), val logLevel: String = "info", val resetEnvVars : Boolean = false) {
   def appConfigByName(name: String): Option[HelperAppConfig] = appConfigs.find(_.name == name)
 }
 
@@ -21,8 +21,8 @@ object HelperConfig {
     "BUILDPACK"
   )
 
-  def apply(startupValidation: Option[String] = None, appConfigs: Seq[HelperAppConfig] = Seq(), reservedEnvVars: List[String] = List()): HelperConfig = {
-    new HelperConfig(startupValidation, appConfigs, reserved ++ reservedEnvVars)
+  def apply(startupValidation: Option[String] = None, appConfigs: Seq[HelperAppConfig] = Seq(), reservedEnvVars: List[String] = List(), logLevel : String, resetEnvVars : Boolean): HelperConfig = {
+    new HelperConfig(startupValidation, appConfigs, reserved ++ reservedEnvVars, logLevel, resetEnvVars)
   }
 }
 

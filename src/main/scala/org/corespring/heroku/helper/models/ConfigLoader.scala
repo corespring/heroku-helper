@@ -26,8 +26,10 @@ class TypesafeConfigConfigLoader(path: String) extends ConfigLoader with Typesaf
       val list = appTConfigs.asScala.toList.map(_.asInstanceOf[TConfig])
       val appConfigs: List[HelperAppConfig] = list.map(toHerokuAppConfig)
       val startupValidation = loadWithDefault((() => typesafeConfig.getString("startupValidation")), toSome[String], None)
+      val logLevel = loadWithDefault( () => typesafeConfig.getString("logLevel"), (s : String) => s, "info")
+      val resetEnvVars = loadWithDefault( () => typesafeConfig.getBoolean("resetEnvVars"), (b : Boolean) => b, true)
       val reservedEnvVars = loadWithDefault(() => typesafeConfig.getStringList("reservedEnvVars"), toScalaList[String], List())
-      HelperConfig(startupValidation, appConfigs, reservedEnvVars)
+      HelperConfig(startupValidation, appConfigs, reservedEnvVars, logLevel, resetEnvVars)
     } catch {
       case e: Throwable => throw new InvalidConfigException(e.getMessage)
     }

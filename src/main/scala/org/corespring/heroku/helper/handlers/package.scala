@@ -4,12 +4,12 @@ import annotation.tailrec
 import com.codahale.jerkson.Json
 import grizzled.cmd.{Stop, KeepGoing, CommandAction, CommandHandler}
 import grizzled.readline._
+import org.corespring.heroku.helper.CLI.RuntimeOptions
 import org.corespring.heroku.helper.log.logger
 import org.corespring.heroku.helper.models._
 import org.corespring.heroku.rest.models.Release
 import scala.Some
 import shell.{CmdResult, Git, Shell}
-import org.corespring.heroku.helper.CLI.RuntimeOptions
 
 package object handlers {
 
@@ -87,7 +87,7 @@ package object handlers {
       */
     protected def inputMatches(source: String, input: String): Boolean = {
       import scala.util.matching._
-val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".*)", "all")
+      val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".*)", "all")
       regex.findFirstIn(source).isDefined
     }
 
@@ -143,17 +143,17 @@ val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".
   }
 
 
-
-  class DryRunHandler extends CommandHandler{
+  class DryRunHandler extends CommandHandler {
     val CommandName = "dry-run"
     val Help = "Toggle dry run"
 
-    def runCommand(command:String, args : String) : CommandAction = {
+    def runCommand(command: String, args: String): CommandAction = {
       RuntimeOptions.dryRun = args.startsWith("true")
       logger.info("dry run: " + RuntimeOptions.dryRun)
       KeepGoing
     }
   }
+
   /** Handler the "about" command
     */
   class AboutHandler extends CommandHandler {
@@ -244,7 +244,7 @@ val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".
   }
 
 
-  class PushHandler(appsService: AppsService, shellLoader: => Shell, envVars: List[EnvironmentVariables])
+  class PushHandler(appsService: AppsService, shellLoader: => Shell, envVars: List[EnvironmentVariables], resetEnvVars: Boolean)
     extends BaseHandler
     with ShellRunning
     with AppsHelper
@@ -252,7 +252,7 @@ val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".
     val CommandName = "push"
     val Help = "push this git repository to a heroku remote repository"
 
-    lazy val shell : Shell = shellLoader
+    lazy val shell: Shell = shellLoader
 
     def service() = appsService
 
@@ -270,7 +270,7 @@ val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".
     def writeHerokuConfigToFile(app: HerokuApp): String = {
       val herokuConfig = appsService.loadHerokuConfigVars(app)
       val json = Json.generate(herokuConfig)
-      if(RuntimeOptions.dryRun){
+      if (RuntimeOptions.dryRun) {
         logger.info(json)
       }
       val tmpDataFile = configFilename(app)
@@ -290,8 +290,7 @@ val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
-
-        println("args: " + args)
+        logger.debug("args: " + args)
         def isCurrentRelease(app: HerokuApp): Boolean = {
           val currentRelease: Release = appsService.currentRelease(app)
           logger.debug("current release: " + currentRelease)
@@ -308,21 +307,23 @@ val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".
                   logger.info(app.name + " is already up to date - not pushing")
                 } else {
 
-                  clearEnvVars(app.name, envVarsToClear(app))
-                  setEnvVarsForApp(app.name, envVars)
+                  logger.debug("resetEnvVars: " + resetEnvVars)
+                  if (resetEnvVars) {
+                    clearEnvVars(app.name, envVarsToClear(app))
+                    setEnvVarsForApp(app.name, envVars)
+                  }
 
                   val tmpFile = writeHerokuConfigToFile(app)
                   config.push.before.foreach(script => {
-                    println("[heroku-helper] run: " + script)
                     logger.info("run: " + script)
-                    logger.info(runScript(script, tmpFile + " " + app.name + " " + branch))
+                    runScript(script, tmpFile + " " + app.name + " " + branch)
                   })
                   val finalCmd = config.push.prepareCommand(app.gitRemote, branch)
-                  logger.info("running push: " + finalCmd)
-                  logger.info(runScript(finalCmd))
+                  logger.debug("running push: " + finalCmd)
+                  runScript(finalCmd)
                   config.push.after.foreach(script => {
-                    logger.info("run: " + script)
-                    logger.info(runScript(script, tmpFile + " " + app.name + " " + branch))
+                    logger.debug("run: " + script)
+                    runScript(script, tmpFile + " " + app.name + " " + branch)
                   })
                 }
             }
@@ -373,11 +374,11 @@ val regex: Regex = new Regex("(.*" + input.split("").toList.mkString(".*?") + ".
 
                 def run(script: String): String = runScript(script, release.commit + " " + tmpFile)
 
-                config.rollback.before.foreach(script => logger.info(run(script)))
+                config.rollback.before.foreach(script => run(script))
                 val finalCmd = config.rollback.prepareCommand(version, appName)
                 logger.debug("running rollback: " + finalCmd)
-                logger.info(runScript(finalCmd))
-                config.rollback.after.foreach(script => logger.info(run(script)))
+                runScript(finalCmd)
+                config.rollback.after.foreach(script => run(script))
               }
 
           }

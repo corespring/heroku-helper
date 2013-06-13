@@ -36,7 +36,8 @@ object logger {
   private var theLevel: LogLevel = Info
   var useAnsi = true
 
-  private val wrapper = new WordWrapper(79)
+  private val wrapper = new WordWrapper(150, indentation = 2, prefix = "[heroku-helper]")
+
   val Levels = List(Error, Warning, Info, Verbose, Debug)
 
   def level = theLevel
