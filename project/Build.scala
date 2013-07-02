@@ -5,11 +5,11 @@ import Keys._
 object Build extends sbt.Build {
 
   val name = "heroku-helper"
-  val appVersion = "0.2-SNAPSHOT"
+  val appVersion = "0.3-SNAPSHOT"
 
   def buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.corespring",
-    scalaVersion := "2.9.2",
+    scalaVersion := "2.10.1",
     version := appVersion,
     libraryDependencies ++= Dependencies.all,
     resolvers ++= Resolvers.all
@@ -18,11 +18,14 @@ object Build extends sbt.Build {
   object Dependencies {
 
     val all = Seq(
-      "org.clapper" %% "grizzled-scala" % "1.0.13",
+      "org.clapper" %% "grizzled-scala" % "1.1.4",
       "com.codahale" % "jerkson_2.9.1" % "0.5.0",
-      "org.specs2" %% "specs2" % "1.12.2" % "test",
+      "org.specs2" %% "specs2" % "2.1-SNAPSHOT" % "test",
       "com.typesafe" % "config" % "1.0.0",
-      "org.scalaj" %% "scalaj-http" % "0.3.6"
+      "org.scalaj" %% "scalaj-http" % "0.3.7",
+      "net.databinder.dispatch" %% "dispatch-core" % "0.10.1"
+
+
     )
   }
 

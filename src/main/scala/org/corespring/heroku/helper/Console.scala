@@ -1,9 +1,6 @@
 package org.corespring.heroku.helper
 
-import models.{AppsService, AppsServiceImpl, ConfigLoader, EnvironmentVariables}
 import grizzled.cmd.{KeepGoing, CommandAction, CommandHandler, CommandInterpreter}
-import shell.{Shell, Git}
-import org.corespring.heroku.helper.handlers._
 import log.{logger, Debug}
 
 

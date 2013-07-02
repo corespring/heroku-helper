@@ -79,7 +79,7 @@ class AppsServiceImpl(apiKey: String, git: GitInfo, config: HelperConfig) extend
   def branches : List[String] = git.branches
 
   def loadHerokuConfigVars(app:HerokuApp) : Map[String,String] = {
-    HerokuRestClient.Config.config(apiKey,app.name) match {
+    HerokuRestClient.Config.get(apiKey,app.name) match {
       case Right(map) => map
       case Left(error) => Map()
     }
