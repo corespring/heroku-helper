@@ -8,7 +8,6 @@ class SetEnvironmentVariablesHandlerTest extends Specification {
 
   "SetEnvironmentVariablesHandler" should {
 
-
     "set the vars" in {
 
       val mockAppService = new MockAppsService( apps = List(
@@ -22,8 +21,7 @@ class SetEnvironmentVariablesHandlerTest extends Specification {
       val handler = new SetEnvironmentVariablesHandler(mockAppService, mockVars, mockShell)
 
       handler.runCommand("set-env-vars", "my-app")
-      mockShell.cmds === List("heroku config:set one=1 --app my-app")
+      mockAppService.vars === Map("one" -> "1")
     }
   }
-
 }

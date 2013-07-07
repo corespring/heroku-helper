@@ -87,37 +87,7 @@ class PushHandlerTest extends Specification {
       val expected = interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
       handler.runCommand("push", "my-cool-heroku-app master")
       shellLog.cmds.mkString("\n") === expected.trim
-
-      shellLog.cmds = List()
-      val handler2 = new PushHandler(mockApps, shellLog, List(EnvironmentVariables("my-cool-heroku-app", Map("A" -> "apple"))), true)
-      val expected2 = "heroku config:set A=apple --app my-cool-heroku-app\n" + interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
-      handler2.runCommand("push", "my-cool-heroku-app master")
-      val out = shellLog.cmds.mkString("\n")
-      out === expected2.trim
     }
-
-    "unset env vars" in new RemoveFileAfter{
-
-      val app = "my-app"
-      def filesToDeleteAfter: List[String] = List(".heroku-helper-tmp-" + app + ".json")
-      val shellLog = new LoggingShell
-      val mockConfig = new HelperAppConfig(name = app)
-      val mockApp = HerokuApp(gitRemote = app + "-heroku", name = app)
-      val mockApps = new MockAppsService(
-        config = Some(mockConfig),
-        apps = List(mockApp),
-        branches = List("master"),
-        herokuConfigVars = Map("A_KEY_TO_REMOVE" -> "value", "RESERVED_KEY" -> "value"),
-        reservedEnvVars = List("RESERVED_"))
-      val handler = new PushHandler(mockApps, shellLog, List(EnvironmentVariables(app, Map("A" -> "apple"))), true)
-      handler.runCommand("push", app + " master")
-      shellLog.cmds.mkString("\n") ===
-        """heroku config:remove A_KEY_TO_REMOVE --app my-app
-          |heroku config:set A=apple --app my-app
-          |git push my-app-heroku master:master""".stripMargin
-    }
-
   }
-
 }
 
