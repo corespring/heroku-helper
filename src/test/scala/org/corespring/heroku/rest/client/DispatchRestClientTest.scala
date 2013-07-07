@@ -30,7 +30,9 @@ class DispatchRestClientTest extends Specification {
       client.config.set(apiKey, app, m) === Right(defaultMap ++ m)
       client.config.get(apiKey, app) === Right(defaultMap ++ m)
       val empty: Map[String, String] = Map()
-      client.config.set(apiKey, app, empty) === Right(defaultMap)
+      client.config.set(apiKey, app, empty) === Right(defaultMap ++ m)
+      client.config.get(apiKey, app) === Right(defaultMap ++ m)
+      client.config.unset(apiKey,app, Seq("COLOR"))
       client.config.get(apiKey, app) === Right(defaultMap)
     }
   }

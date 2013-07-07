@@ -21,10 +21,10 @@ object DispatchRestClient extends HerokuRestClient {
   implicit val formats = DefaultFormats
 
 
-  private def request(apiKey: String, u:String, version : Option[Int] = Some(3)): RequestBuilder = {
+  private def request(apiKey: String, u: String, version: Option[Int] = Some(3)): RequestBuilder = {
 
     url(u)
-      .addHeader("Accept", version.map( v => "application/vnd.heroku+json; version=" + 3).getOrElse("application/json"))
+      .addHeader("Accept", version.map(v => "application/vnd.heroku+json; version=" + 3).getOrElse("application/json"))
       .addHeader("ContentType", "application/.json")
       .as_!("", apiKey)
   }
@@ -43,6 +43,8 @@ object DispatchRestClient extends HerokuRestClient {
   def config: Config = new Config {
 
     /** Update the app config vars.
+      * This is done in an additive way. If the var already exists its updated.
+      * If the var doesn't exist - its added. No existing vars are removed.
       *
       * This has to be done in a peculiar way (due to heroku's implementation).
       * To remove a var you set it to `null` eg: {"myvar": null}
@@ -54,21 +56,26 @@ object DispatchRestClient extends HerokuRestClient {
       * @return
       */
     def set(apiKey: String, app: String, data: Map[String, String]): Either[HerokuRestClientException, Map[String, String]] = {
+      def dataMapToJsonMap(m: Map[String, String]): Map[String, JValue] = m.map(tpl => (tpl._1, JString(tpl._2)))
+      callPatch(apiKey,app, dataMapToJsonMap(data))
+    }
 
-      get(apiKey, app) match {
-        case Right(current) => {
-          val toSend = dataMapToJsonMap(createMap(current, data)) -- ReservedKeys
-          val configUrl = s"$base/$app/config-vars"
-          val rb = request(apiKey, configUrl).PATCH << compact(render(JObject(toSend.toList)))
-          val result: Future[String] = Http(rb > as.String)
-          val resultString = Await.result(result, 4.seconds)
-          for {
-            json <- parseString(resultString).toSuccess("Couldn't parse json")
-            map <- json.extractOpt[Map[String, String]].toSuccess("Couldn't convert json to Map[String,String]")
-          } yield map
-        }
-        case Left(e) => Left(e)
-      }
+    /** Remove keys from config
+      */
+    def unset(apiKey: String, app: String, data: Seq[String]): Either[HerokuRestClientException, Map[String, String]] = {
+      val map : Map[String,JValue] = data.map( (_, JNull) ).toMap[String,JValue]
+      callPatch(apiKey,app, map)
+    }
+
+    private def callPatch(apiKey:String, app:String, data: Map[String,JValue]) : Either[HerokuRestClientException, Map[String,String]] = {
+      val configUrl = s"$base/$app/config-vars"
+      val rb = request(apiKey, configUrl).PATCH << compact(render(JObject(data.toList)))
+      val result: Future[String] = Http(rb > as.String)
+      val resultString = Await.result(result, 4.seconds)
+      for {
+        json <- parseString(resultString).toSuccess("Couldn't parse json")
+        map <- json.extractOpt[Map[String, String]].toSuccess("Couldn't convert json to Map[String,String]")
+      } yield map
     }
 
     /**
@@ -89,7 +96,6 @@ object DispatchRestClient extends HerokuRestClient {
       prepped
     }
 
-    private def dataMapToJsonMap(m:Map[String,Option[String]]) : Map[String,JValue] = m.map( tpl => (tpl._1, tpl._2.map(JString(_)).getOrElse(JNull)))
 
     def get(apiKey: String, app: String): Either[HerokuRestClientException, Map[String, String]] = {
 
@@ -113,7 +119,7 @@ object DispatchRestClient extends HerokuRestClient {
     def list(apiKey: String, app: String): Either[HerokuRestClientException, List[Release]] = {
 
       val url = s"$base/$app/releases"
-      val rb = request(apiKey,url, None)
+      val rb = request(apiKey, url, None)
 
       val result: Future[String] = Http(rb > as.String)
       val resultString = Await.result(result, 4.seconds)

@@ -4,25 +4,19 @@ package org.corespring.heroku.helper.models
 /**
  * @param startupValidation - a script to run before running the helper to validate the environment
  * @param appConfigs - helper app configs
- * @param reservedEnvVars - a set of env vars that are reserved - they can be set but not deleted.
  */
-class HelperConfig(val startupValidation: Option[String] = None,  val appConfigs: Seq[HelperAppConfig] = Seq(), val reservedEnvVars: List[String] = List(), val logLevel: String = "info", val resetEnvVars : Boolean = false) {
+class HelperConfig(
+                    val startupValidation: Option[String] = None,
+                    val appConfigs: Seq[HelperAppConfig] = Seq(),
+                    val logLevel: String = "info",
+                    val resetEnvVars : Boolean = false) {
   def appConfigByName(name: String): Option[HelperAppConfig] = appConfigs.find(_.name == name)
 }
 
 object HelperConfig {
-  val reserved: List[String] = List(
-    "HEROKU_",
-    "PATH",
-    "JAVA_",
-    "DATABASE_",
-    "SBT_OPTS",
-    "REPO",
-    "BUILDPACK"
-  )
 
-  def apply(startupValidation: Option[String] = None, appConfigs: Seq[HelperAppConfig] = Seq(), reservedEnvVars: List[String] = List(), logLevel : String, resetEnvVars : Boolean): HelperConfig = {
-    new HelperConfig(startupValidation, appConfigs, reserved ++ reservedEnvVars, logLevel, resetEnvVars)
+  def apply(startupValidation: Option[String] = None, appConfigs: Seq[HelperAppConfig] = Seq(), logLevel : String, resetEnvVars : Boolean): HelperConfig = {
+    new HelperConfig(startupValidation, appConfigs, logLevel, resetEnvVars)
   }
 }
 

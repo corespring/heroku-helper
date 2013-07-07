@@ -296,15 +296,6 @@ package object handlers {
       tmpDataFile
     }
 
-    def envVarsToClear(app: HerokuApp): List[String] = {
-      def isReserved(key: String): Boolean = {
-        appsService.reservedEnvVars.exists(key.startsWith(_))
-      }
-
-      val currentConfigVars = appsService.loadHerokuConfigVars(app)
-      currentConfigVars.toList.map(_._1).filterNot(isReserved)
-    }
-
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>

@@ -21,8 +21,6 @@ class TypesafeConfigLoaderTest extends Specification{
       configOne.rollback.cmd === "rollback_cmd"
       configOne.rollback.before === List("rollback_before_one", "rollback_before_two")
       configOne.rollback.after === List("rollback_after_one", "rollback_after_two")
-
-      typesafeLoader.load.reservedEnvVars === HelperConfig.reserved ++ List("DATABASE_URL", "HEROKU_")
     }
 
     "load two configs " in {

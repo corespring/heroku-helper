@@ -28,6 +28,14 @@ This file defines scripts that should be run for a specific heroku app.
 
     # This script will run on launch - so you can validate that the environment is setup
     startupValidation: "blah.sh"
+
+    # log level that the heroku helper uses - supports info|error|warn|debug
+    logLevel: info
+
+    # resetEnvVars - whether to reset the heroku env vars on a push - defaults to true
+    # when updating env vars, only existing vars will be updated, new vars will be added and the rest will not be deleted
+    # resetEnvVars: false
+
     # A list of configurations
     appConfigs:[
 

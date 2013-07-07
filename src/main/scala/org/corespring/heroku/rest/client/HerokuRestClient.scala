@@ -10,7 +10,18 @@ trait HerokuRestClient{
 
   trait Config{
     def get(apiKey:String, app:String) : Either[HerokuRestClientException,Map[String,String]]
+
+    /** Additive set:
+      * 1. Update var if existing
+      * 2. Add var if not
+      * 3. Don't remove other vars
+      */
     def set(apiKey:String, app:String, data : Map[String,String]) : Either[HerokuRestClientException,Map[String,String]]
+
+    /** Remove keys from config
+      */
+    def unset(apiKey:String, app:String, data : Seq[String]) : Either[HerokuRestClientException,Map[String,String]]
+
   }
 
   trait Releases{
@@ -27,6 +38,10 @@ object NullClient extends HerokuRestClient{
     def set(apiKey: String, app: String, data: Map[String, String]): Either[HerokuRestClientException, Map[String, String]] = ???
 
     def get(apiKey: String, app: String): Either[HerokuRestClientException, Map[String, String]] = ???
+
+    /** Remove keys from config
+      */
+    def unset(apiKey: String, app: String, data: Seq[String]): Either[HerokuRestClientException, Map[String, String]] = ???
   }
 
   def releases: Releases = new Releases {

@@ -33,8 +33,6 @@ trait AppsService {
   /** The local git repos short commit hash*/
   def shortCommitHash : String
 
-  def reservedEnvVars : List[String]
-
 }
 
 class AppsServiceImpl(apiKey: String, git: GitInfo, config: HelperConfig, restClient : HerokuRestClient ) extends AppsService {
@@ -76,8 +74,6 @@ class AppsServiceImpl(apiKey: String, git: GitInfo, config: HelperConfig, restCl
   }
 
   def loadConfigFor(app: HerokuApp): Option[HelperAppConfig] = config.appConfigByName(app.name)
-
-  def reservedEnvVars = config.reservedEnvVars
 
   def branches : List[String] = git.branches
 
