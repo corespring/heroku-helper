@@ -91,6 +91,12 @@ We use sbt 12.x
 
 ### Release Notes
 
+#### 0.4
+- Set env vars and push now set the vars via the rest api. This means that multiple changes can be applied for only one release.
+- Re-implemented the Rest Client using Dispatch
+
+#### 0.3
+
 #### 0.2
 - When pushing env vars are automatically set (like calling `set-env-vars` then `push`).
 - When setting env vars - remove all the current vars before setting.
