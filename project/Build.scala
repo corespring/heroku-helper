@@ -19,13 +19,12 @@ object Build extends sbt.Build {
 
     val all = Seq(
       "org.clapper" %% "grizzled-scala" % "1.1.4",
-      "com.codahale" % "jerkson_2.9.1" % "0.5.0",
       "org.specs2" %% "specs2" % "2.1-SNAPSHOT" % "test",
       "com.typesafe" % "config" % "1.0.0",
       "org.scalaj" %% "scalaj-http" % "0.3.7",
+      "org.json4s" %% "json4s-native" % "3.2.2",
+      "org.scalaz" %% "scalaz-core" % "7.0.1",
       "net.databinder.dispatch" %% "dispatch-core" % "0.10.1"
-
-
     )
   }
 
@@ -38,8 +37,7 @@ object Build extends sbt.Build {
       "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
       "mvn repo" at "http://repo1.maven.org/maven2/",
       "repo.novus rels" at "http://repo.novus.com/releases/",
-      "repo.novus snaps" at "http://repo.novus.com/snapshots/",
-      "codahale repo" at "http://repo.codahale.com")
+      "repo.novus snaps" at "http://repo.novus.com/snapshots/")
   }
 
 

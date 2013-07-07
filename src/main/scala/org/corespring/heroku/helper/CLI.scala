@@ -7,6 +7,7 @@ import models._
 import org.corespring.heroku.helper.handlers._
 import org.corespring.heroku.helper.shell.{LoggingShell, CmdResult, Shell, Git}
 import scala.Some
+import org.corespring.heroku.rest.client.NullClient
 
 
 object CLI extends App {
@@ -40,7 +41,7 @@ object CLI extends App {
     case e: Throwable => List()
   }
 
-  val appsService: AppsService = new AppsServiceImpl(apiKey, Git, helperConfig)
+  val appsService: AppsService = new AppsServiceImpl(apiKey, Git, helperConfig, NullClient)
 
   object RuntimeOptions {
     var dryRun: Boolean = false

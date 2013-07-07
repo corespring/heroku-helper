@@ -1,14 +1,14 @@
 package org.corespring.heroku.helper
 
 import annotation.tailrec
-import com.codahale.jerkson.Json
 import grizzled.cmd.{Stop, KeepGoing, CommandAction, CommandHandler}
 import grizzled.readline._
 import org.corespring.heroku.helper.CLI.RuntimeOptions
 import org.corespring.heroku.helper.log.logger
 import org.corespring.heroku.helper.models._
-import org.corespring.heroku.rest.models.Release
+import org.corespring.heroku.rest.models.unsupported.Release
 import scala.Some
+import scala.util.parsing.json.JSONObject
 import shell.{CmdResult, Git, Shell}
 
 package object handlers {
@@ -77,8 +77,22 @@ package object handlers {
         }
       }
     }
-
   }
+
+  trait EnvVarSetting {
+    self: AppsHelper =>
+
+    def setEnvVarsForApp(appName: String, envVars: List[EnvironmentVariables]) {
+      envVars.find(_.herokuName == appName) match {
+        case Some(ev) => {
+          logger.debug("Setting env vars for app: " + appName + " vars: \n" + envVars.mkString("\n"))
+          service.setHerokuConfigVars(ev.herokuName, ev.vars)
+        }
+        case _ => logger.info("can't find environment variables for: " + appName)
+      }
+    }
+  }
+
 
   abstract class BaseHandler extends CommandHandler {
 
@@ -243,12 +257,16 @@ package object handlers {
     }
   }
 
+  trait JsonWriter {
+    def toJsonString(m: Map[String, String]): String = new JSONObject(m).toString
+  }
 
   class PushHandler(appsService: AppsService, shellLoader: => Shell, envVars: List[EnvironmentVariables], resetEnvVars: Boolean)
     extends BaseHandler
     with ShellRunning
     with AppsHelper
-    with EnvVarSetting {
+    with EnvVarSetting
+    with JsonWriter {
     val CommandName = "push"
     val Help = "push this git repository to a heroku remote repository"
 
@@ -269,7 +287,7 @@ package object handlers {
 
     def writeHerokuConfigToFile(app: HerokuApp): String = {
       val herokuConfig = appsService.loadHerokuConfigVars(app)
-      val json = Json.generate(herokuConfig)
+      val json = toJsonString(herokuConfig)
       if (RuntimeOptions.dryRun) {
         logger.info(json)
       }
@@ -308,8 +326,8 @@ package object handlers {
                 } else {
 
                   logger.debug("resetEnvVars: " + resetEnvVars)
+
                   if (resetEnvVars) {
-                    clearEnvVars(app.name, envVarsToClear(app))
                     setEnvVarsForApp(app.name, envVars)
                   }
 
@@ -336,14 +354,15 @@ package object handlers {
   }
 
 
-  class RollbackHandler(appsService: AppsService, shell: Shell)
+  class RollbackHandler(appsService: AppsService, val shell: Shell)
     extends BaseHandler
-    with ShellRunning with AppsHelper {
+    with ShellRunning
+    with AppsHelper
+    with JsonWriter{
     val CommandName = "rollback"
     val Help = "rollback a heroku repo to an earlier version"
     val ErrorMsg = "you need to specify the heroku app name and the version"
 
-    def shell() = shell
 
     def service() = appsService
 
@@ -364,7 +383,7 @@ package object handlers {
               } yield {
 
                 def writeReleaseConfigToFile: String = {
-                  val envJson = Json.generate(release.env)
+                  val envJson = toJsonString(release.env)
                   val filename = ".rollback-" + release.name
                   org.corespring.file.utils.write(filename, envJson)
                   filename
@@ -413,13 +432,12 @@ package object handlers {
   }
 
 
-  class SetEnvironmentVariablesHandler(appsService: AppsService, environmentVariables: List[EnvironmentVariables], shell: Shell)
-    extends BaseHandler with ShellRunning
-    with EnvVarSetting {
+  class SetEnvironmentVariablesHandler(val service: AppsService, environmentVariables: List[EnvironmentVariables], val shell: Shell)
+    extends BaseHandler
+    with EnvVarSetting
+    with AppsHelper{
     val CommandName = "set-env-vars"
     val Help = "set env vars based on what it is configured in .heroku-helper-env.conf (note: always happens when you do a push)"
-
-    def shell() = shell
 
     def runCommand(command: String, args: String): CommandAction = wrap {
       () =>
@@ -429,40 +447,9 @@ package object handlers {
         }
     }
 
-
     override def complete(token: String, allTokens: List[CompletionToken], line: String): List[String] = {
-      val appNames = appsService.apps.map(_.name)
+      val appNames = service.apps.map(_.name)
       completeFromOptions(token, allTokens, line, appNames)
     }
   }
-
-
-  trait EnvVarSetting {
-    self: ShellRunning =>
-
-    def clearEnvVars(appName: String, vars: List[String]) {
-      if (vars.length > 0) {
-        val cmd = "heroku config:remove " + vars.mkString(" ") + " --app " + appName
-        shell.run(cmd, out, err)
-      }
-    }
-
-    def setEnvVarsForApp(appName: String, envVars: List[EnvironmentVariables]) {
-      envVars.find(_.herokuName == appName) match {
-        case Some(ev) => {
-          logger.debug("Setting env vars for app: " + appName + " vars: \n" + envVars.mkString("\n"))
-          runConfigSet(ev)
-        }
-        case _ => logger.info("can't find environment variables for: " + appName)
-      }
-    }
-
-    private def runConfigSet(ev: EnvironmentVariables) {
-      def toCmd(kv: (String, String)): String = kv._1 + "=" + kv._2
-      val cmd: String = "heroku config:set " + ev.vars.map(toCmd).mkString(" ") + " --app " + ev.herokuName
-      logger.debug("running: " + cmd)
-      shell.run(cmd, out, err)
-    }
-  }
-
 }

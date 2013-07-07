@@ -1,10 +1,10 @@
 package org.corespring.heroku.helper.handlers
 
-import org.specs2.mutable.Specification
 import org.corespring.heroku.helper.models.{Rollback, HelperAppConfig, MockAppsService, HerokuApp}
-import org.corespring.heroku.rest.models.{Release}
 import org.corespring.heroku.helper.shell.LoggingShell
 import org.corespring.heroku.helper.testUtils.RemoveFileAfter
+import org.specs2.mutable.Specification
+import org.corespring.heroku.rest.models.unsupported.Release
 
 class RollbackHandlerTest extends Specification {
 

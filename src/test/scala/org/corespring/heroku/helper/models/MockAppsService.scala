@@ -1,6 +1,6 @@
 package org.corespring.heroku.helper.models
 
-import org.corespring.heroku.rest.models.Release
+import org.corespring.heroku.rest.models.unsupported.Release
 
 
 class MockAppsService(
@@ -24,5 +24,7 @@ class MockAppsService(
 
   def loadHerokuConfigVars(app: HerokuApp): Map[String, String] = herokuConfigVars
 
+  /** Set the env vars on the given heroku app */
+  def setHerokuConfigVars(app: String, vars: Map[String, String]): Either[String, Map[String, String]] = ???
 }
 

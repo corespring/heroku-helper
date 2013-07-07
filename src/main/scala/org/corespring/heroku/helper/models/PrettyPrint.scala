@@ -1,6 +1,6 @@
 package org.corespring.heroku.helper.models
 
-import org.corespring.heroku.rest.models.Release
+import org.corespring.heroku.rest.models.unsupported.Release
 
 object PrettyPrint {
   def release(r: Release): String = {

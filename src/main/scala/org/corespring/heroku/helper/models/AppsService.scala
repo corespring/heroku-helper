@@ -1,9 +1,9 @@
 package org.corespring.heroku.helper.models
 
-import org.corespring.heroku.rest.models.Release
+import collection.mutable.HashMap
 import org.corespring.heroku.helper.shell.git.GitInfo
 import org.corespring.heroku.rest.client.HerokuRestClient
-import collection.mutable.HashMap
+import org.corespring.heroku.rest.models.unsupported.Release
 
 
 case class HerokuApp(gitRemote: String, name: String)
@@ -27,6 +27,9 @@ trait AppsService {
 
   def loadHerokuConfigVars(app:HerokuApp) : Map[String,String]
 
+  /** Set the env vars on the given heroku app*/
+  def setHerokuConfigVars(app:String,vars:Map[String,String]) : Either[String,Map[String,String]]
+
   /** The local git repos short commit hash*/
   def shortCommitHash : String
 
@@ -34,7 +37,7 @@ trait AppsService {
 
 }
 
-class AppsServiceImpl(apiKey: String, git: GitInfo, config: HelperConfig) extends AppsService {
+class AppsServiceImpl(apiKey: String, git: GitInfo, config: HelperConfig, restClient : HerokuRestClient ) extends AppsService {
 
   private val appToReleaseMap: HashMap[HerokuApp, List[Release]] = new HashMap[HerokuApp, List[Release]]()
 
@@ -43,7 +46,7 @@ class AppsServiceImpl(apiKey: String, git: GitInfo, config: HelperConfig) extend
   def releases(app: HerokuApp): List[Release] = {
 
     def loadReleases = {
-      HerokuRestClient.Releases.list(apiKey, app.name) match {
+      restClient.releases.list(apiKey, app.name) match {
         case Left(error) => null
         case Right(releases) => releases
       }
@@ -79,11 +82,19 @@ class AppsServiceImpl(apiKey: String, git: GitInfo, config: HelperConfig) extend
   def branches : List[String] = git.branches
 
   def loadHerokuConfigVars(app:HerokuApp) : Map[String,String] = {
-    HerokuRestClient.Config.get(apiKey,app.name) match {
+    restClient.config.get(apiKey,app.name) match {
       case Right(map) => map
       case Left(error) => Map()
     }
   }
 
   def shortCommitHash : String = git.shortCommitHash
+
+  /** Set the env vars on the given heroku app */
+  def setHerokuConfigVars(app: String, vars: Map[String, String]): Either[String,Map[String, String]] = {
+    restClient.config.set(apiKey, app, vars) match {
+      case Left(ex) => Left(ex.getMessage)
+      case Right(m) => Right(m)
+    }
+  }
 }
