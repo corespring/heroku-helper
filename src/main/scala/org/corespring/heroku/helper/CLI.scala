@@ -61,11 +61,15 @@ object CLI extends App {
     new SetEnvironmentVariablesHandler(appsService, environmentVariables, Shell),
     new FolderInfoHandler)
 
+
   args.toList match {
     case Nil => launchConsole
     case command :: params => {
       handlers.find(_.CommandName == command) match {
-        case Some(handler) => handler.runCommand(command, params.mkString(" "))
+        case Some(handler) => {
+          handler.runCommand(command, params.mkString(" "))
+          System.exit(0)
+        }
         case _ => launchConsole
       }
     }
