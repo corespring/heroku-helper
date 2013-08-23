@@ -189,6 +189,7 @@ package object handlers {
 
     def runCommand(commandName: String, args: String): CommandAction = {
       logger.info("Bye!")
+
       Stop
     }
   }

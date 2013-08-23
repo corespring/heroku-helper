@@ -6,8 +6,8 @@ import log.logger
 import models._
 import org.corespring.heroku.helper.handlers._
 import org.corespring.heroku.helper.shell.{LoggingShell, CmdResult, Shell, Git}
+import org.corespring.heroku.rest.client.DispatchRestClient
 import scala.Some
-import org.corespring.heroku.rest.client.{DispatchRestClient, NullClient}
 
 
 object CLI extends App {
@@ -62,49 +62,52 @@ object CLI extends App {
     new FolderInfoHandler)
 
 
-  args.toList match {
-    case Nil => launchConsole
-    case command :: params => {
-      handlers.find(_.CommandName == command) match {
-        case Some(handler) => {
-          handler.runCommand(command, params.mkString(" "))
-          System.exit(0)
-        }
-        case _ => launchConsole
-      }
+  try {
+    launch(args, handlers)
+  }
+  catch {
+    case e: Throwable => {
+      e.printStackTrace()
+      System.exit(1)
     }
   }
 
-  /** Launch the interactive console
-    */
-  private def launchConsole {
 
-    logger.info(Header)
+  private def launch(args: Array[String], handlers: List[CommandHandler]): Unit = {
 
+    /** Launch the interactive console
+      */
+    def launchConsole : Unit = {
 
-    val validationResult: CmdResult = helperConfig.startupValidation match {
-      case Some(validationScript) => {
-        Shell.run(validationScript,
-          (s: String) => logger.info(s),
-          (s: String) => logger.debug(s))
+      logger.info(Header)
+
+      val validationResult: CmdResult = helperConfig.startupValidation match {
+        case Some(validationScript) => {
+          Shell.run(validationScript,
+            (s: String) => logger.info(s),
+            (s: String) => logger.debug(s))
+        }
+        case _ => CmdResult.empty
       }
-      case _ => CmdResult.empty
+
+      validationResult match {
+        case CmdResult(_, _, _, 0) => {
+          val cmd = new Console(handlers)
+          cmd.mainLoop
+        }
+        case _ => logger.error("Environment validation failed: see: " + validationResult.name)
+      }
     }
 
-    validationResult match {
-      case CmdResult(_, _, _, 0) => run
-      case _ => logger.error("Environment validation failed: see: " + validationResult.name)
-    }
-
-    def run {
-
-      try {
-        val cmd = new Console(handlers)
-        cmd.mainLoop
-      } catch {
-        case e: Throwable => {
-          logger.error("An error has occured: " + e.getMessage)
-          System.exit(1)
+    args.toList match {
+      case Nil => launchConsole
+      case command :: params => {
+        handlers.find(_.CommandName == command) match {
+          case Some(handler) => {
+            handler.runCommand(command, params.mkString(" "))
+            System.exit(0)
+          }
+          case _ => launchConsole
         }
       }
     }
