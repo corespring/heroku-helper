@@ -74,19 +74,29 @@ class PushHandlerTest extends Specification {
         apps = List(mockApp),
         branches = List("master"))
 
-      val expectedTemplate = """before 1 ${tmpFile} ${appName} master
-                               |before 2 ${tmpFile} ${appName} master
+      val handler = new PushHandler(mockApps, shellLog, List(), false)
+
+      val expected = s"""before 1 ${handler.configFilename(mockApp)} ${mockApp.name} master
+                               |before 2 ${handler.configFilename(mockApp)} ${mockApp.name} master
                                |git push heroku master:master
-                               |after 1 ${tmpFile} ${appName} master
-                               |after 2 ${tmpFile} ${appName} master
+                               |after 1 ${handler.configFilename(mockApp)} ${mockApp.name} master
+                               |after 2 ${handler.configFilename(mockApp)} ${mockApp.name} master
                                | """.stripMargin
 
-      import org.corespring.heroku.helper.string.utils._
 
-      val handler = new PushHandler(mockApps, shellLog, List(), false)
-      val expected = interpolate(expectedTemplate, ("tmpFile", handler.configFilename(mockApp)), ("appName", mockApp.name))
       handler.runCommand("push", "my-cool-heroku-app master")
       shellLog.cmds.mkString("\n") === expected.trim
+
+      shellLog.reset
+
+      val beforeExpected = s"""before 1 ${handler.configFilename(mockApp)} ${mockApp.name} master
+                               |before 2 ${handler.configFilename(mockApp)} ${mockApp.name} master
+                               | """.stripMargin
+
+      handler.runCommand("push", "my-cool-heroku-app master before")
+
+
+      shellLog.cmds.mkString("\n") === beforeExpected.trim
     }
   }
 }

@@ -5,7 +5,7 @@ import Keys._
 object Build extends sbt.Build {
 
   val name = "heroku-helper"
-  val appVersion = "0.5"
+  val appVersion = "0.6"
 
   def buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.corespring",
@@ -19,7 +19,7 @@ object Build extends sbt.Build {
 
     val all = Seq(
       "org.clapper" %% "grizzled-scala" % "1.1.4",
-      "org.specs2" %% "specs2" % "2.1-SNAPSHOT" % "test",
+      "org.specs2" %% "specs2" % "2.1.1" % "test",
       "com.typesafe" % "config" % "1.0.0",
       "org.scalaj" %% "scalaj-http" % "0.3.7",
       "org.json4s" %% "json4s-native" % "3.2.2",

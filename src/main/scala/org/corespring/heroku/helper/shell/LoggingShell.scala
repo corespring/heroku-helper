@@ -4,6 +4,9 @@ class LoggingShell(response: String = "") extends Shell {
 
   var cmds : List[String] = List()
 
+
+  def reset = cmds = List()
+
   def run(cmd: String) = {
     cmds = cmds :+ cmd
     println(cmd)

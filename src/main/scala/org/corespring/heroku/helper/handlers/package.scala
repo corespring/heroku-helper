@@ -308,36 +308,56 @@ package object handlers {
           currentRelease.commit == appsService.shortCommitHash
         }
 
-        args.split(" ").toList match {
-          case List(appName, branch) => {
-            withApp(appName, (app) => appsService.loadConfigFor(app)) {
-              (app: HerokuApp, config: HelperAppConfig) =>
+        def run(appName: String, branch: String, action: Option[String]) = withApp(appName, (app) => appsService.loadConfigFor(app)) {
+          (app: HerokuApp, config: HelperAppConfig) =>
 
-                if (isCurrentRelease(app)) {
-                  logger.info(app.name + " is already up to date - not pushing")
-                } else {
+            if (isCurrentRelease(app)) {
+              logger.info(app.name + " is already up to date - not pushing")
+            } else {
 
-                  logger.debug("resetEnvVars: " + resetEnvVars)
+              require( action.map( a => a == "before" || a == "after").getOrElse(true), "the action must be 'before' or 'after'")
 
-                  if (resetEnvVars) {
-                    setEnvVarsForApp(app.name, envVars)
-                  }
+              val beforeEnabled = action.map(_ == "before").getOrElse(true)
+              val afterEnabled = action.map(_ == "after").getOrElse(true)
+              val cmdEnabled = action.isEmpty
 
-                  val tmpFile = writeHerokuConfigToFile(app)
-                  config.push.before.foreach(script => {
-                    logger.info("run: " + script)
-                    runScript(script, tmpFile + " " + app.name + " " + branch)
-                  })
-                  val finalCmd = config.push.prepareCommand(app.gitRemote, branch)
-                  logger.debug("running push: " + finalCmd)
-                  runScript(finalCmd)
-                  config.push.after.foreach(script => {
-                    logger.debug("run: " + script)
-                    runScript(script, tmpFile + " " + app.name + " " + branch)
-                  })
-                }
+              logger.debug(s"run before? $beforeEnabled, after? $afterEnabled, cmd? $cmdEnabled")
+
+              logger.debug("resetEnvVars: " + resetEnvVars)
+
+              if (resetEnvVars) {
+                setEnvVarsForApp(app.name, envVars)
+              }
+
+              val tmpFile = writeHerokuConfigToFile(app)
+
+              if (beforeEnabled) {
+                config.push.before.foreach(script => {
+                  logger.info("run: " + script)
+                  runScript(script, tmpFile + " " + app.name + " " + branch)
+                })
+              }
+
+              if (cmdEnabled) {
+                val finalCmd = config.push.prepareCommand(app.gitRemote, branch)
+                logger.debug("running push: " + finalCmd)
+                runScript(finalCmd)
+              }
+
+              if (afterEnabled) {
+                config.push.after.foreach(script => {
+                  logger.debug("run: " + script)
+                  runScript(script, tmpFile + " " + app.name + " " + branch)
+                })
+
+              }
             }
-          }
+        }
+
+
+        args.split(" ").toList match {
+          case List(appName, branch, action) => run(appName, branch, Some(action))
+          case List(appName, branch) => run(appName, branch, None)
           case _ => logger.info("try again tou need to specify an app and a branch")
         }
 

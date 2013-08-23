@@ -99,6 +99,9 @@ We use sbt 12.x
 
 ### Release Notes
 
+#### 0.6
+- push can now take 'before' or 'after' this will only run the before or after scripts and not the command
+
 #### 0.4
 - Set env vars and push now set the vars via the rest api. This means that multiple changes can be applied for only one release.
 - Re-implemented the Rest Client using Dispatch
