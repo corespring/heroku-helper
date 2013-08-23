@@ -7,4 +7,3 @@ resolvers += Resolver.url(
 )(Resolver.ivyStylePatterns)
 
 
-addSbtPlugin("com.github.retronym" % "sbt-onejar" % "0.8")

@@ -1,5 +1,7 @@
 import sbt._
 import Keys._
+import sbtassembly.Plugin._
+import sbtassembly.Plugin.AssemblyKeys._
 
 
 object Build extends sbt.Build {
@@ -40,6 +42,6 @@ object Build extends sbt.Build {
       "repo.novus snaps" at "http://repo.novus.com/snapshots/")
   }
 
-  lazy val root = Project(id = name, base = file("."), settings = buildSettings)
+  lazy val root = Project(id = name, base = file("."), settings = buildSettings ++ assemblySettings)
 
 }
